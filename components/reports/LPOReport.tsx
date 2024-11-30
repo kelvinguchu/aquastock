@@ -125,6 +125,60 @@ export function LPOReport() {
     // Implement CSV export logic
   };
 
+  if (isLoading) {
+    return (
+      <div className='space-y-6'>
+        {/* Filters skeleton */}
+        <div className='flex items-center justify-between'>
+          <div className='flex gap-4'>
+            <div className='w-[280px] h-10 bg-gray-200 animate-pulse rounded-md' /> {/* Date picker */}
+            <div className='w-[180px] h-10 bg-gray-200 animate-pulse rounded-md' /> {/* Location select */}
+          </div>
+          <div className='flex gap-2'>
+            <div className='w-24 h-10 bg-gray-200 animate-pulse rounded-md' />
+            <div className='w-24 h-10 bg-gray-200 animate-pulse rounded-md' />
+          </div>
+        </div>
+
+        {/* Stats cards skeleton */}
+        <div className='grid gap-4 md:grid-cols-4'>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className='p-6 rounded-lg border border-gray-100/50 bg-white/50'>
+              <div className='space-y-3'>
+                <div className='w-24 h-5 bg-gray-200 animate-pulse rounded-md' />
+                <div className='w-16 h-4 bg-gray-200 animate-pulse rounded-md' />
+                <div className='w-32 h-8 bg-gray-200 animate-pulse rounded-md' />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Table skeleton */}
+        <div className='rounded-lg border border-gray-100/50 bg-white/50'>
+          <div className='p-4 space-y-4'>
+            <div className='w-48 h-6 bg-gray-200 animate-pulse rounded-md' />
+            <div className='space-y-3'>
+              {/* Table header */}
+              <div className='grid grid-cols-8 gap-4 pb-4'>
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+                ))}
+              </div>
+              {/* Table rows */}
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className='grid grid-cols-8 gap-4 py-3 border-t border-gray-100/50'>
+                  {[...Array(8)].map((_, j) => (
+                    <div key={j} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ReportWrapper>
       <div className="flex items-center justify-between">

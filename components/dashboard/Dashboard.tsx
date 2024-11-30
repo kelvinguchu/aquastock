@@ -16,12 +16,10 @@ export default function Dashboard({ user, children }: DashboardProps) {
 
   return (
     <>
-      <Navbar user={user} />
-      <div className="flex min-h-screen pt-16">
-        <AppSidebar user={user} />
-        <div className="flex-1 pl-[240px] p-6">
-          {children}
-        </div>
+      <AppSidebar user={user} />
+      <div className='flex min-h-screen'>
+        <Navbar user={user} />
+        <main className='w-full ml-[280px] pt-16 px-4'>{children}</main>
       </div>
     </>
   );

@@ -38,7 +38,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 const itemSchema = z.object({
   product_id: z.string().uuid({ message: "Please select a product" }),
-  quantity: z.string()
+  quantity: z
+    .string()
     .min(1, "Quantity is required")
     .transform((val) => {
       const num = parseFloat(val);
@@ -54,7 +55,6 @@ const formSchema = z.object({
   customer_name: z.string().optional(),
   customer_phone: z.string().optional(),
   customer_email: z.string().email().optional().or(z.literal("")),
-  save_customer: z.boolean().default(false),
 });
 
 type FormValues = {
@@ -66,7 +66,6 @@ type FormValues = {
   customer_name?: string;
   customer_phone?: string;
   customer_email?: string;
-  save_customer: boolean;
 };
 
 const defaultValues: FormValues = {
@@ -75,7 +74,6 @@ const defaultValues: FormValues = {
   customer_name: "",
   customer_phone: "",
   customer_email: "",
-  save_customer: false,
 };
 
 interface RequestDeductionFormProps {
@@ -115,29 +113,30 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
   async function onSubmit(values: FormValues) {
     setIsSubmitting(true);
     try {
-      console.log('Submitting values:', values);
-
       const response = await fetch("/api/inventory-requests", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          items: values.items.map(item => ({
+          items: values.items.map((item) => ({
             product_id: item.product_id,
             quantity: item.quantity,
-          }))
+          })),
+          customer_name: values.customer_name || null,
+          customer_phone: values.customer_phone || null,
+          customer_email: values.customer_email || null,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit request');
+        throw new Error(data.error || "Failed to submit request");
       }
 
       await queryClient.invalidateQueries({ queryKey: ["deduction-requests"] });
-      
+
       toast({
         title: "Success",
         description: "Request submitted successfully",
@@ -146,11 +145,11 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
       form.reset(defaultValues);
       onSuccess?.();
     } catch (error) {
-      console.error("Request submission error:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to submit request",
+        description:
+          error instanceof Error ? error.message : "Failed to submit request",
       });
     } finally {
       setIsSubmitting(false);
@@ -159,10 +158,10 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
 
   // Fix the customers query by removing the enabled option
   const { data: customers = [] } = useQuery({
-    queryKey: ['customers'],
+    queryKey: ["customers"],
     queryFn: async () => {
-      const response = await fetch('/api/customers');
-      if (!response.ok) throw new Error('Failed to fetch customers');
+      const response = await fetch("/api/customers");
+      if (!response.ok) throw new Error("Failed to fetch customers");
       return response.json();
     },
   });
@@ -180,33 +179,33 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
 
   if (isLoadingProducts) {
     return (
-      <div className="flex items-center justify-center h-[200px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className='flex items-center justify-center h-[200px]'>
+        <Loader2 className='h-8 w-8 animate-spin' />
       </div>
     );
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
         {/* Customer Details Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">Customer Details (Optional)</h4>
+        <div className='space-y-4'>
+          <div className='flex items-center justify-between'>
+            <h4 className='text-sm font-medium'>Customer Details (Optional)</h4>
           </div>
 
-          <div className="grid gap-4">
+          <div className='grid gap-4'>
             {/* Existing Customer Select */}
             <FormField
               control={form.control}
-              name="customer_id"
+              name='customer_id'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Existing Customer</FormLabel>
                   <FormControl>
                     <Select onValueChange={handleCustomerSelect}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a customer" />
+                        <SelectValue placeholder='Select a customer' />
                       </SelectTrigger>
                       <SelectContent>
                         {customers.map((customer: any) => (
@@ -225,27 +224,27 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
             {/* New Customer Fields */}
             <FormField
               control={form.control}
-              name="customer_name"
+              name='customer_name'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Customer Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter customer name" {...field} />
+                    <Input placeholder='Enter customer name' {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className='grid grid-cols-2 gap-4'>
               <FormField
                 control={form.control}
-                name="customer_phone"
+                name='customer_phone'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter phone number" {...field} />
+                      <Input placeholder='Enter phone number' {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -254,15 +253,15 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
 
               <FormField
                 control={form.control}
-                name="customer_email"
+                name='customer_email'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="email" 
-                        placeholder="Enter email" 
-                        {...field} 
+                      <Input
+                        type='email'
+                        placeholder='Enter email'
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -270,38 +269,15 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="save_customer"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Save as new customer</FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
           </div>
         </div>
 
         {/* Existing Items Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">Items</h4>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addItem}
-            >
-              <Plus className="h-4 w-4 mr-2" />
+        <div className='space-y-4'>
+          <div className='flex items-center justify-between'>
+            <h4 className='text-sm font-medium'>Items</h4>
+            <Button type='button' variant='outline' size='sm' onClick={addItem}>
+              <Plus className='h-4 w-4 mr-2' />
               Add Item
             </Button>
           </div>
@@ -311,7 +287,7 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
               <TableRow>
                 <TableHead>Product</TableHead>
                 <TableHead>Quantity</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className='w-[50px]'></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -324,16 +300,17 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
                       render={({ field: productField }) => (
                         <FormItem>
                           <FormControl>
-                            <Select 
-                              onValueChange={productField.onChange} 
-                              value={productField.value}
-                            >
+                            <Select
+                              onValueChange={productField.onChange}
+                              value={productField.value}>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select a product" />
+                                <SelectValue placeholder='Select a product' />
                               </SelectTrigger>
                               <SelectContent>
                                 {products.map((product: any) => (
-                                  <SelectItem key={product.id} value={product.id}>
+                                  <SelectItem
+                                    key={product.id}
+                                    value={product.id}>
                                     {product.name}
                                   </SelectItem>
                                 ))}
@@ -353,10 +330,10 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
                         <FormItem>
                           <FormControl>
                             <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="Enter quantity"
+                              type='number'
+                              step='0.01'
+                              min='0'
+                              placeholder='Enter quantity'
                               {...quantityField}
                             />
                           </FormControl>
@@ -367,13 +344,12 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
                   </TableCell>
                   <TableCell>
                     <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
+                      type='button'
+                      variant='ghost'
+                      size='sm'
                       disabled={fields.length === 1}
-                      onClick={() => remove(index)}
-                    >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      onClick={() => remove(index)}>
+                      <Trash2 className='h-4 w-4 text-muted-foreground' />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -382,21 +358,17 @@ export function RequestDeductionForm({ onSuccess }: RequestDeductionFormProps) {
           </Table>
         </div>
 
-        <Button 
-          type="submit" 
-          disabled={isSubmitting}
-          className="w-full"
-        >
+        <Button type='submit' disabled={isSubmitting} className='w-full'>
           {isSubmitting ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
               Submitting...
             </>
           ) : (
-            'Submit Request'
+            "Submit Request"
           )}
         </Button>
       </form>
     </Form>
   );
-} 
+}

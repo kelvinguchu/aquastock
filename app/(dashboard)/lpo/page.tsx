@@ -1,13 +1,11 @@
 "use client";
 
 import { LPOTable } from "@/components/lpo/LPOTable";
+import DashboardContent from "@/components/dashboard/DashboardContent";
 
 export default function LPOPage() {
   return (
-    <div className="container mx-auto py-10">
-      <h2 className="text-3xl font-bold tracking-tight mb-6 text-center">
-        Local Purchase Orders
-      </h2>
+    <div className='w-[75vw] mx-auto mt-4 space-y-6'>
       <LPOTable />
     </div>
   );

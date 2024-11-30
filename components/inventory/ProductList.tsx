@@ -106,8 +106,35 @@ export function ProductList({ location }: ProductListProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
-        <Loader />
+      <div className='space-y-6'>
+        {/* Search and filters skeleton */}
+        <div className='flex items-center justify-between gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-lg border border-gray-100/50 shadow-sm'>
+          <div className='w-72 h-10 bg-gray-200 animate-pulse rounded-md' />
+          <div className='flex items-center gap-4'>
+            <div className='w-10 h-10 bg-gray-200 animate-pulse rounded-md' />
+            <div className='w-32 h-6 bg-gray-200 animate-pulse rounded-md' />
+          </div>
+        </div>
+
+        {/* Table skeleton */}
+        <div className='overflow-hidden rounded-lg border border-gray-100/50 bg-white/50 backdrop-blur-sm shadow-sm'>
+          <div className='p-4 space-y-4'>
+            {/* Table header */}
+            <div className='grid grid-cols-5 gap-4 pb-4'>
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+              ))}
+            </div>
+            {/* Table rows */}
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className='grid grid-cols-5 gap-4 py-3 border-t border-gray-100/50'>
+                {[...Array(5)].map((_, j) => (
+                  <div key={j} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

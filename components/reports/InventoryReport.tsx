@@ -133,6 +133,57 @@ export function InventoryReport() {
 
   const isLoading = isLoadingUtawala || isLoadingKamulu;
 
+  if (isLoading) {
+    return (
+      <div className='space-y-6'>
+        {/* Filters skeleton */}
+        <div className='flex items-center justify-between'>
+          <div className='w-[180px] h-10 bg-gray-200 animate-pulse rounded-md' />
+          <div className='flex gap-2'>
+            <div className='w-24 h-10 bg-gray-200 animate-pulse rounded-md' />
+            <div className='w-24 h-10 bg-gray-200 animate-pulse rounded-md' />
+          </div>
+        </div>
+
+        {/* Stats cards skeleton */}
+        <div className='grid gap-4 md:grid-cols-3'>
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className='p-6 rounded-lg border border-gray-100/50 bg-white/50'>
+              <div className='space-y-3'>
+                <div className='w-24 h-5 bg-gray-200 animate-pulse rounded-md' />
+                <div className='w-16 h-4 bg-gray-200 animate-pulse rounded-md' />
+                <div className='w-32 h-8 bg-gray-200 animate-pulse rounded-md' />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Table skeleton */}
+        <div className='rounded-lg border border-gray-100/50 bg-white/50'>
+          <div className='p-4 space-y-4'>
+            <div className='w-48 h-6 bg-gray-200 animate-pulse rounded-md' />
+            <div className='space-y-3'>
+              {/* Table header */}
+              <div className='grid grid-cols-5 gap-4 pb-4'>
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+                ))}
+              </div>
+              {/* Table rows */}
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className='grid grid-cols-5 gap-4 py-3 border-t border-gray-100/50'>
+                  {[...Array(5)].map((_, j) => (
+                    <div key={j} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ReportWrapper>
       <div className="flex items-center justify-between">
@@ -170,102 +221,94 @@ export function InventoryReport() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center h-[200px]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Products</CardTitle>
-                <CardDescription>Across selected location(s)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalProducts}</div>
-              </CardContent>
-            </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Products</CardTitle>
+            <CardDescription>Across selected location(s)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalProducts}</div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Low Stock Items</CardTitle>
-                <CardDescription>Below minimum level</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{lowStockProducts}</div>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Low Stock Items</CardTitle>
+            <CardDescription>Below minimum level</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{lowStockProducts}</div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Out of Stock</CardTitle>
-                <CardDescription>Zero quantity</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{outOfStockProducts}</div>
-              </CardContent>
-            </Card>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Out of Stock</CardTitle>
+            <CardDescription>Zero quantity</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{outOfStockProducts}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Inventory Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product Name</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Current Stock</TableHead>
-                    <TableHead>Min. Stock Level</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.map((product: ProductWithUniqueId) => (
-                    <TableRow key={product.uniqueId}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {product.inventory[0].location}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{product.inventory[0].quantity}</TableCell>
-                      <TableCell>{product.min_stock_level}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            product.inventory[0].quantity === 0
-                              ? "destructive"
-                              : product.inventory[0].quantity <= product.min_stock_level
-                              ? "outline"
-                              : "default"
-                          }
-                          className={cn(
-                            product.inventory[0].quantity === 0
-                              ? "bg-red-100 text-red-800"
-                              : product.inventory[0].quantity <= product.min_stock_level
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
-                          )}
-                        >
-                          {product.inventory[0].quantity === 0
-                            ? "Out of Stock"
-                            : product.inventory[0].quantity <= product.min_stock_level
-                            ? "Low Stock"
-                            : "In Stock"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Inventory Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product Name</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Current Stock</TableHead>
+                <TableHead>Min. Stock Level</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProducts.map((product: ProductWithUniqueId) => (
+                <TableRow key={product.uniqueId}>
+                  <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {product.inventory[0].location}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{product.inventory[0].quantity}</TableCell>
+                  <TableCell>{product.min_stock_level}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        product.inventory[0].quantity === 0
+                          ? "destructive"
+                          : product.inventory[0].quantity <= product.min_stock_level
+                          ? "outline"
+                          : "default"
+                      }
+                      className={cn(
+                        product.inventory[0].quantity === 0
+                          ? "bg-red-100 text-red-800"
+                          : product.inventory[0].quantity <= product.min_stock_level
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-green-100 text-green-800"
+                      )}
+                    >
+                      {product.inventory[0].quantity === 0
+                        ? "Out of Stock"
+                        : product.inventory[0].quantity <= product.min_stock_level
+                        ? "Low Stock"
+                        : "In Stock"}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </ReportWrapper>
   );
 } 

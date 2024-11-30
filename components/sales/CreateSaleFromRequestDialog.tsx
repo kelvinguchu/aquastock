@@ -127,8 +127,12 @@ export function CreateSaleFromRequestDialog({
 
       if (defaultProducts[0].customer_name) {
         form.setValue("customer_name", defaultProducts[0].customer_name);
-        form.setValue("customer_phone", defaultProducts[0].customer_phone || "");
-        form.setValue("customer_email", defaultProducts[0].customer_email || "");
+        if (defaultProducts[0].customer_phone) {
+          form.setValue("customer_phone", defaultProducts[0].customer_phone);
+        }
+        if (defaultProducts[0].customer_email) {
+          form.setValue("customer_email", defaultProducts[0].customer_email);
+        }
       }
     }
   }, [defaultProducts, form]);

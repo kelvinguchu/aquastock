@@ -10,17 +10,20 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  
-  const { data: { user }, error } = await supabase.auth.getUser();
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
   if (error || !user) {
     redirect("/login");
   }
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
     .single();
 
   if (!profile) {
@@ -29,9 +32,9 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen flex-col">
+      <div className='flex min-h-screen flex-col'>
         <Dashboard user={profile}>
-          <main className="flex w-full flex-col overflow-hidden">
+          <main className='flex w-full flex-col overflow-hidden'>
             {children}
           </main>
         </Dashboard>

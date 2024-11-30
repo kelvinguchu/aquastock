@@ -11,22 +11,9 @@ interface NavbarProps {
 
 export function Navbar({ user }: NavbarProps) {
   return (
-    <nav className='fixed top-0 z-50 w-full border-b bg-background'>
-      <div className='container flex h-16 items-center'>
-        <div className='flex items-center gap-4'>
-          <div className='flex items-center gap-2 ml-4'>
-            <Image
-              src='/logo.png'
-              alt='Aquatreat Logo'
-              width={120}
-              height={120}
-            />
-          </div>
-          {/* <SidebarTrigger /> */}
-        </div>
-        <div className='ml-auto flex items-center gap-4'>
-          <UserNav user={user} />
-        </div>
+    <nav className='fixed top-0 right-0 z-50 w-[calc(100%-280px)] border-b border-zinc-100/50 bg-[#F8FAFC]'>
+      <div className='flex h-16 items-center justify-end px-6'>
+        <UserNav user={user} />
       </div>
     </nav>
   );

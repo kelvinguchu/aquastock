@@ -22,6 +22,12 @@ export async function GET() {
         ),
         approved_by_profile:profiles!inventory_requests_approved_by_fkey (
           full_name
+        ),
+        customers (
+          id,
+          name,
+          phone,
+          email
         )
       `)
       .order('created_at', { ascending: false });
@@ -30,7 +36,6 @@ export async function GET() {
 
     return NextResponse.json(requests);
   } catch (error) {
-    console.error('Error fetching inventory requests:', error);
     return NextResponse.json(
       { error: 'Failed to fetch inventory requests' },
       { status: 500 }
@@ -44,27 +49,53 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { items } = await request.json();
+    const { items, customer_name, customer_phone, customer_email } = await request.json();
     
-    // Add validation
-    if (!items?.length) {
-      return NextResponse.json(
-        { error: 'At least one item is required' },
-        { status: 400 }
-      );
-    }
+    let customer_id = null;
 
-    // Log for debugging
-    console.log('Creating requests:', {
-      items,
-      user_id: user.id
-    });
+    // If customer phone is provided (making it the primary identifier)
+    if (customer_phone) {
+      // Try to find existing customer by phone
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('phone', customer_phone)
+        .maybeSingle();
+
+      if (existingCustomer) {
+        // If customer exists, use their ID
+        customer_id = existingCustomer.id;
+        
+        // Optionally update other details if they've changed
+        if (customer_name || customer_email) {
+          await supabase
+            .from('customers')
+            .update({
+              name: customer_name || undefined,
+              email: customer_email || undefined,
+            })
+            .eq('id', customer_id);
+        }
+      } else {
+        // Create new customer if phone number doesn't exist
+        const { data: newCustomer, error: customerError } = await supabase
+          .from('customers')
+          .insert({
+            name: customer_name || null,
+            phone: customer_phone,
+            email: customer_email || null,
+            created_by: user.id  // Add the created_by field
+          })
+          .select()
+          .single();
+
+        if (customerError) throw customerError;
+        customer_id = newCustomer.id;
+      }
+    }
 
     // Create requests for each item
     const { data, error } = await supabase
@@ -72,23 +103,16 @@ export async function POST(request: Request) {
       .insert(
         items.map((item: any) => ({
           product_id: item.product_id,
-          quantity: parseFloat(item.quantity), // Ensure quantity is a number
+          quantity: parseFloat(item.quantity),
           created_by: user.id,
+          customer_id: customer_id
         }))
       )
       .select();
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-
+    if (error) throw error;
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error creating inventory requests:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to create inventory requests' },
       { status: 500 }

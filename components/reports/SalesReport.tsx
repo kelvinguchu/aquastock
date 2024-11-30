@@ -116,6 +116,57 @@ export function SalesReport() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className='space-y-6'>
+        {/* Filters skeleton */}
+        <div className='flex items-center justify-between'>
+          <div className='w-[280px] h-10 bg-gray-200 animate-pulse rounded-md' /> {/* Date picker */}
+          <div className='flex gap-2'>
+            <div className='w-24 h-10 bg-gray-200 animate-pulse rounded-md' />
+            <div className='w-24 h-10 bg-gray-200 animate-pulse rounded-md' />
+          </div>
+        </div>
+
+        {/* Stats cards skeleton */}
+        <div className='grid gap-4 md:grid-cols-3'>
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className='p-6 rounded-lg border border-gray-100/50 bg-white/50'>
+              <div className='space-y-3'>
+                <div className='w-24 h-5 bg-gray-200 animate-pulse rounded-md' />
+                <div className='w-16 h-4 bg-gray-200 animate-pulse rounded-md' />
+                <div className='w-32 h-8 bg-gray-200 animate-pulse rounded-md' />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Table skeleton */}
+        <div className='rounded-lg border border-gray-100/50 bg-white/50'>
+          <div className='p-4 space-y-4'>
+            <div className='w-48 h-6 bg-gray-200 animate-pulse rounded-md' />
+            <div className='space-y-3'>
+              {/* Table header */}
+              <div className='grid grid-cols-7 gap-4 pb-4'>
+                {[...Array(7)].map((_, i) => (
+                  <div key={i} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+                ))}
+              </div>
+              {/* Table rows */}
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className='grid grid-cols-7 gap-4 py-3 border-t border-gray-100/50'>
+                  {[...Array(7)].map((_, j) => (
+                    <div key={j} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ReportWrapper>
       <div className="flex items-center justify-between">
@@ -144,123 +195,115 @@ export function SalesReport() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center h-[200px]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Sales</CardTitle>
-                <CardDescription>For selected period</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  KES {totalSales.toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Sales</CardTitle>
+            <CardDescription>For selected period</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              KES {totalSales.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Approved Sales</CardTitle>
-                <CardDescription>Number of approved sales</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalApprovedSales}</div>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Approved Sales</CardTitle>
+            <CardDescription>Number of approved sales</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalApprovedSales}</div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending Sales</CardTitle>
-                <CardDescription>Requires approval</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalPendingSales}</div>
-              </CardContent>
-            </Card>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending Sales</CardTitle>
+            <CardDescription>Requires approval</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalPendingSales}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Items</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Payment Method</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created By</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSales.map((sale: Sale) => (
-                    <TableRow key={sale.id}>
-                      <TableCell>
-                        {format(new Date(sale.created_at), "dd/MM/yyyy")}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{sale.customer_name}</span>
-                          {sale.customer_phone && (
-                            <span className="text-sm text-muted-foreground">
-                              {sale.customer_phone}
-                            </span>
-                          )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Sales Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Payment Method</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created By</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSales.map((sale: Sale) => (
+                <TableRow key={sale.id}>
+                  <TableCell>
+                    {format(new Date(sale.created_at), "dd/MM/yyyy")}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{sale.customer_name}</span>
+                      {sale.customer_phone && (
+                        <span className="text-sm text-muted-foreground">
+                          {sale.customer_phone}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      {sale.sale_items.map((item: SaleItem, index: number) => (
+                        <div key={index} className="text-sm">
+                          {item.products.name} × {item.quantity}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {sale.sale_items.map((item: SaleItem, index: number) => (
-                            <div key={index} className="text-sm">
-                              {item.products.name} × {item.quantity}
-                            </div>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>KES {sale.total_amount.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {sale.payment_method.replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            sale.status === "approved"
-                              ? "default"
-                              : sale.status === "pending"
-                              ? "outline"
-                              : "destructive"
-                          }
-                          className={cn(
-                            sale.status === "approved"
-                              ? "bg-green-100 text-green-800"
-                              : sale.status === "pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          )}
-                        >
-                          {sale.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{sale.profiles.full_name}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </>
-      )}
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>KES {sale.total_amount.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {sale.payment_method.replace('_', ' ')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        sale.status === "approved"
+                          ? "default"
+                          : sale.status === "pending"
+                          ? "outline"
+                          : "destructive"
+                      }
+                      className={cn(
+                        sale.status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : sale.status === "pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                      )}
+                    >
+                      {sale.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{sale.profiles.full_name}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </ReportWrapper>
   );
 } 

@@ -39,6 +39,7 @@ import { CreateSaleSheet } from "@/components/sales/CreateSaleDialog";
 import { cn } from "@/lib/utils";
 import { CreateLPOSheet } from "@/components/lpo/CreateLPOSheet";
 import { RequestDeductionSheet } from "@/components/request/RequestDeductionSheet";
+import Image from "next/image";
 
 interface AppSidebarProps {
   user: Profile;
@@ -269,32 +270,54 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
   return (
     <>
-      <div className='h-[calc(100vh-4rem)] fixed top-16'>
-        <Sidebar className='max-w-[17%]'>
-          <SidebarContent className='mt-16'>
+      <div className='h-screen fixed left-0 top-0 z-50'>
+        <Sidebar className='w-[280px] h-full bg-[#F8FAFC] border-r border-zinc-100/50'>
+          <div className='p-4'>
+            <Image
+              src='/logo.png'
+              alt='Aquatreat Logo'
+              width={160}
+              height={160}
+              className='w-auto h-auto'
+            />
+          </div>
+
+          <SidebarContent className=''>
             <SidebarGroup>
-              <SidebarGroupLabel className='px-2 text-lg font-bold tracking-tight'>
-                MENU
+              <SidebarGroupLabel className='px-2 text-xs font-medium text-zinc-400 tracking-wider'>
+                NAVIGATION
               </SidebarGroupLabel>
-              <SidebarMenu>
+              <SidebarMenu className="mt-2">
                 {navItems.menu.map((item, index) => (
                   <SidebarMenuItem key={index}>
                     <SidebarMenuButton
                       onClick={() => router.push(item.href)}
                       tooltip={item.title}
-                      className={pathname === item.href ? "bg-accent" : ""}>
-                      <item.icon
-                        className={cn(
-                          "h-4 w-4",
+                      className={cn(
+                        'relative px-3 py-2 rounded-lg transition-all duration-300 group',
+                        'hover:bg-white/60',
+                        pathname === item.href && 
+                          'bg-white/80 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-[3px] before:rounded-full before:bg-gradient-to-b before:from-indigo-600 before:to-purple-600'
+                      )}>
+                      <div className={cn(
+                        "p-1.5 rounded-md transition-colors",
+                        pathname === item.href 
+                          ? "bg-gradient-to-br from-indigo-50 to-purple-50" 
+                          : "group-hover:bg-zinc-50"
+                      )}>
+                        <item.icon className={cn(
+                          "h-4 w-4 transition-colors",
                           pathname === item.href
-                            ? "text-primary"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          pathname === item.href && "font-medium text-primary"
-                        )}>
+                            ? "text-indigo-600"
+                            : "text-zinc-400 group-hover:text-zinc-600"
+                        )} />
+                      </div>
+                      <span className={cn(
+                        "text-sm transition-colors ml-3",
+                        pathname === item.href 
+                          ? "font-medium text-indigo-600" 
+                          : "text-zinc-600 group-hover:text-zinc-900"
+                      )}>
                         {item.title}
                       </span>
                     </SidebarMenuButton>
@@ -303,24 +326,34 @@ export function AppSidebar({ user }: AppSidebarProps) {
               </SidebarMenu>
             </SidebarGroup>
 
-            {navItems.actions && navItems.actions.length > 0 && (
-              <SidebarGroup className='mt-8'>
-                <SidebarGroupLabel className='px-2 text-lg font-bold tracking-tight'>
-                  ACTIONS
-                </SidebarGroupLabel>
-                <SidebarMenu>
-                  {navItems.actions.map((item, index) => (
-                    <SidebarMenuItem key={index}>
-                      <SidebarMenuButton
-                        onClick={item.action}
-                        tooltip={item.title}>
-                        <item.icon className='h-4 w-4' />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroup>
+            {navItems.actions && (
+              <>
+                <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-200 to-transparent" />
+                
+                <SidebarGroup>
+                  <SidebarGroupLabel className='px-2 text-xs font-medium text-zinc-400 tracking-wider'>
+                    QUICK ACTIONS
+                  </SidebarGroupLabel>
+                  <SidebarMenu className="mt-2">
+                    {navItems.actions.map((item, index) => (
+                      <SidebarMenuItem key={index}>
+                        <SidebarMenuButton
+                          onClick={item.action}
+                          tooltip={item.title}
+                          className="group px-3 py-2 rounded-lg hover:bg-white/60 transition-all duration-300"
+                        >
+                          <div className="p-1.5 rounded-md bg-gradient-to-br from-zinc-50 to-zinc-100/50 group-hover:from-indigo-50 group-hover:to-purple-50">
+                            <item.icon className='h-4 w-4 text-zinc-500 group-hover:text-indigo-600' />
+                          </div>
+                          <span className="text-sm text-zinc-600 group-hover:text-zinc-900 ml-3">
+                            {item.title}
+                          </span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroup>
+              </>
             )}
           </SidebarContent>
         </Sidebar>

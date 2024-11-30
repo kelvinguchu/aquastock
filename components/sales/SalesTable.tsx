@@ -65,6 +65,22 @@ interface Sale {
   sale_items: SaleItem[];
 }
 
+// First, add a helper function to get payment badge styles
+const getPaymentBadgeStyles = (method: string) => {
+  switch (method) {
+    case 'mpesa':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+    case 'cash':
+      return 'bg-blue-50 text-blue-700 border-blue-200/50';
+    case 'bank_transfer':
+      return 'bg-purple-50 text-purple-700 border-purple-200/50';
+    case 'cheque':
+      return 'bg-amber-50 text-amber-700 border-amber-200/50';
+    default:
+      return 'bg-gray-50 text-gray-700 border-gray-200/50';
+  }
+};
+
 export function SalesTable() {
   const { state } = useSidebar();
   const [searchTerm, setSearchTerm] = useState("");
@@ -148,8 +164,36 @@ export function SalesTable() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
-        <Loader />
+      <div className='w-[75vw] mx-auto mt-4 space-y-6'>
+        <h2 className='text-3xl font-bold tracking-tight text-center'>Sales Management</h2>
+        <div className='flex flex-col items-center gap-2 mb-8'>
+          <div className='w-32 h-4 bg-gray-200 animate-pulse rounded-md' />
+        </div>
+
+        <div className='flex items-center justify-between gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-lg border border-gray-100/50 shadow-sm'>
+          <div className='w-72 h-10 bg-gray-200 animate-pulse rounded-md' />
+          <div className='flex items-center gap-4'>
+            <div className='w-10 h-10 bg-gray-200 animate-pulse rounded-md' />
+            <div className='w-32 h-6 bg-gray-200 animate-pulse rounded-md' />
+          </div>
+        </div>
+
+        <div className='overflow-hidden rounded-lg border border-gray-100/50 bg-white/50 backdrop-blur-sm shadow-sm'>
+          <div className='p-4 space-y-4'>
+            <div className='grid grid-cols-7 gap-4 pb-4'>
+              {[...Array(7)].map((_, i) => (
+                <div key={i} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+              ))}
+            </div>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className='grid grid-cols-7 gap-4 py-3 border-t border-gray-100/50'>
+                {[...Array(7)].map((_, j) => (
+                  <div key={j} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -157,38 +201,45 @@ export function SalesTable() {
   const { paginatedSales, totalPages, totalSales } = filteredAndPaginatedSales();
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+    <div className='w-[75vw] mx-auto mt-4 space-y-6'>
+      <div className='flex flex-col items-center gap-2 mb-8'>
+        <h2 className='text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent'>
+          Sales Management
+        </h2>
+        <p className='text-sm text-muted-foreground/60'>
+          View and manage sales transactions
+        </p>
+      </div>
+
+      <div className='flex items-center justify-between gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-lg border border-gray-100/50 shadow-sm'>
+        <div className='relative w-full md:w-72'>
+          <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50' />
           <Input
-            placeholder="Search sales..."
+            placeholder='Search sales...'
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="pl-8"
+            className='pl-9 border-gray-100/50 bg-white/50 focus:bg-white transition-colors'
           />
         </div>
-        <div className="flex items-center gap-4">
+
+        <div className='flex items-center gap-3'>
           <Button
-            variant="outline"
-            size="icon"
+            variant='outline'
+            size='icon'
             onClick={handleRefresh}
-            className="hover:bg-gray-100"
-          >
-            <RefreshCw className="h-4 w-4" />
+            className='border-gray-100/50 hover:bg-white/50 transition-colors'>
+            <RefreshCw className='h-4 w-4 text-muted-foreground/70' />
           </Button>
-          <div className="text-sm text-muted-foreground">
-            Total: {totalSales} sales
-          </div>
+          <Badge variant='secondary' className='bg-white/50 text-muted-foreground/70'>
+            {totalSales} {totalSales === 1 ? "sale" : "sales"}
+          </Badge>
         </div>
       </div>
 
-      <div className={`rounded-md border transition-all duration-300 ${
-        state === "expanded" ? "w-[75vw]" : "w-[93vw]"
-      }`}>
+      <div className='overflow-hidden rounded-lg border border-gray-100/50 bg-white/50 backdrop-blur-sm shadow-sm'>
         <Table>
           <TableHeader>
             <TableRow>
@@ -239,7 +290,12 @@ export function SalesTable() {
                   </TableCell>
                   <TableCell>KES {sale.total_amount}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "capitalize",
+                        getPaymentBadgeStyles(sale.payment_method)
+                      )}>
                       {sale.payment_method.replace('_', ' ')}
                     </Badge>
                   </TableCell>
@@ -301,9 +357,9 @@ export function SalesTable() {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex justify-center mt-4">
+        <div className='flex justify-center mt-6'>
           <Pagination>
-            <PaginationContent>
+            <PaginationContent className='bg-white/50 backdrop-blur-sm border border-gray-100/50 rounded-lg shadow-sm px-2'>
               <PaginationItem>
                 <PaginationPrevious 
                   onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}

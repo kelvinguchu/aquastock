@@ -129,8 +129,36 @@ export function TransfersTable() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
-        <Loader />
+      <div className='w-[75vw] mx-auto mt-4 space-y-6'>
+        <h2 className='text-3xl font-bold tracking-tight text-center'>Transfer History</h2>
+        <div className='flex flex-col items-center gap-2 mb-8'>
+          <div className='w-32 h-4 bg-gray-200 animate-pulse rounded-md' />
+        </div>
+
+        <div className='flex items-center justify-between gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-lg border border-gray-100/50 shadow-sm'>
+          <div className='w-72 h-10 bg-gray-200 animate-pulse rounded-md' />
+          <div className='flex items-center gap-4'>
+            <div className='w-10 h-10 bg-gray-200 animate-pulse rounded-md' />
+            <div className='w-32 h-6 bg-gray-200 animate-pulse rounded-md' />
+          </div>
+        </div>
+
+        <div className='overflow-hidden rounded-lg border border-gray-100/50 bg-white/50 backdrop-blur-sm shadow-sm'>
+          <div className='p-4 space-y-4'>
+            <div className='grid grid-cols-7 gap-4 pb-4'>
+              {[...Array(7)].map((_, i) => (
+                <div key={i} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+              ))}
+            </div>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className='grid grid-cols-7 gap-4 py-3 border-t border-gray-100/50'>
+                {[...Array(7)].map((_, j) => (
+                  <div key={j} className='h-4 bg-gray-200 animate-pulse rounded-md' />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -138,43 +166,45 @@ export function TransfersTable() {
   const { paginatedTransfers, totalPages, totalTransfers } = filteredAndPaginatedTransfers();
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-3xl font-bold tracking-tight text-center">
-        Transfer History
-      </h2>
+    <div className='w-[75vw] mx-auto mt-4 space-y-6'>
+      <div className='flex flex-col items-center gap-2 mb-8'>
+        <h2 className='text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent'>
+          Transfer History
+        </h2>
+        <p className='text-sm text-muted-foreground/60'>
+          Track and manage stock transfers between locations
+        </p>
+      </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className='flex items-center justify-between gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-lg border border-gray-100/50 shadow-sm'>
+        <div className='relative w-full md:w-72'>
+          <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50' />
           <Input
-            placeholder="Search transfers..."
+            placeholder='Search transfers...'
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="pl-8"
+            className='pl-9 border-gray-100/50 bg-white/50 focus:bg-white transition-colors'
           />
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className='flex items-center gap-3'>
           <Button
-            variant="outline"
-            size="icon"
+            variant='outline'
+            size='icon'
             onClick={handleRefresh}
-            className="hover:bg-gray-100"
-          >
-            <RefreshCw className="h-4 w-4" />
+            className='border-gray-100/50 hover:bg-white/50 transition-colors'>
+            <RefreshCw className='h-4 w-4 text-muted-foreground/70' />
           </Button>
-          <div className="text-sm text-muted-foreground">
-            Total: {totalTransfers} transfers
-          </div>
+          <Badge variant='secondary' className='bg-white/50 text-muted-foreground/70'>
+            {totalTransfers} {totalTransfers === 1 ? "transfer" : "transfers"}
+          </Badge>
         </div>
       </div>
 
-      <div className={`rounded-md border transition-all duration-300 ${
-        state === "expanded" ? "w-[75vw]" : "w-[93vw]"
-      }`}>
+      <div className='overflow-hidden rounded-lg border border-gray-100/50 bg-white/50 backdrop-blur-sm shadow-sm'>
         <Table>
           <TableHeader>
             <TableRow>
@@ -277,9 +307,9 @@ export function TransfersTable() {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex justify-center mt-4">
+        <div className='flex justify-center mt-6'>
           <Pagination>
-            <PaginationContent>
+            <PaginationContent className='bg-white/50 backdrop-blur-sm border border-gray-100/50 rounded-lg shadow-sm px-2'>
               <PaginationItem>
                 <PaginationPrevious 
                   onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}

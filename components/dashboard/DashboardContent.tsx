@@ -1,262 +1,194 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Activity,
-  DollarSign,
-  Package,
-  ShoppingCart,
-  Users,
-  AlertTriangle,
-} from "lucide-react";
-import type { Profile } from "@/lib/types";
-import { format } from "date-fns";
-import {
-  Bar,
   BarChart,
-  ResponsiveContainer,
-  Tooltip,
+  Bar,
   XAxis,
   YAxis,
+  ResponsiveContainer,
+  Tooltip,
+  CartesianGrid,
+  TooltipProps as RechartsTooltipProps,
 } from "recharts";
+import { format, formatCurrency } from "@/lib/utils";
+import type { Profile } from "@/lib/types/index";
+import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from 'react';
+import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
 interface DashboardContentProps {
   user: Profile;
 }
 
+interface SaleData {
+  date: string;
+  total_amount: number;
+  items?: string[];
+}
+
+interface ChartData {
+  date: string;
+  sales: number;
+  items?: string[];
+}
+
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: RechartsTooltipProps<ValueType, NameType>) => {
+  if (active && payload?.[0]) {
+    const items = payload[0].payload.items as string[] | undefined;
+    const aggregatedItems = items?.reduce(
+      (acc: { [key: string]: number }, item: string) => {
+        const match = item.match(/(.*?)\s*\((\d+)\)$/);
+        if (match) {
+          const [, productName, quantity] = match;
+          acc[productName] = (acc[productName] || 0) + parseInt(quantity, 10);
+        }
+        return acc;
+      },
+      {}
+    );
+
+    return (
+      <div className='rounded-lg border bg-background p-2 shadow-sm'>
+        <div className='flex flex-col gap-1'>
+          <span className='font-medium'>{label}</span>
+          <span className='text-muted-foreground'>
+            {formatCurrency(payload[0].value as number)}
+          </span>
+          {aggregatedItems && Object.keys(aggregatedItems).length > 0 && (
+            <div className='mt-1 border-t pt-1'>
+              <span className='text-xs text-muted-foreground'>Items Sold:</span>
+              <ul className='mt-1 text-sm text-muted-foreground'>
+                {Object.entries(aggregatedItems)
+                  .sort(([aName], [bName]) => aName.localeCompare(bName))
+                  .map(([productName, quantity], index) => (
+                    <li key={index}>
+                      {String(productName)} ({String(quantity)})
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export function DashboardContent({ user }: DashboardContentProps) {
-  // Fetch dashboard data
-  const { data: salesData } = useQuery({
-    queryKey: ['dashboard-sales'],
+  const { data: salesMetrics, isLoading } = useQuery({
+    queryKey: ["sales-metrics"],
     queryFn: async () => {
-      const response = await fetch('/api/sales');
+      const response = await fetch("/api/sales-metrics");
+      if (!response.ok) throw new Error("Failed to fetch sales metrics");
       return response.json();
     },
   });
 
-  const { data: inventoryData } = useQuery({
-    queryKey: ['dashboard-inventory'],
-    queryFn: async () => {
-      const response = await fetch('/api/inventory');
-      return response.json();
-    },
-  });
+  if (isLoading) {
+    return (
+      <div className='h-[calc(100vh-4rem)]'>
+        <div className='h-full bg-gray-200 animate-pulse' />
+      </div>
+    );
+  }
 
-  const { data: customersData } = useQuery({
-    queryKey: ['dashboard-customers'],
-    queryFn: async () => {
-      const response = await fetch('/api/customers');
-      return response.json();
-    },
-  });
+  const chartData: ChartData[] =
+    salesMetrics?.dailySales?.map((sale: SaleData) => ({
+      date: format(new Date(sale.date), "MMM dd"),
+      sales: sale.total_amount,
+      items: sale.items,
+    })) || [];
 
-  // Calculate metrics
-  const totalSales = salesData?.reduce((acc: number, sale: any) => acc + sale.total_amount, 0) || 0;
-  const pendingSales = salesData?.filter((sale: any) => sale.status === 'pending').length || 0;
-  const totalCustomers = customersData?.length || 0;
-  const lowStockItems = inventoryData?.filter((item: any) => 
-    item.quantity <= item.min_stock_level
-  ).length || 0;
+  if (chartData.length === 0) {
+    return (
+      <div className='h-[calc(100vh-4rem)] flex items-center justify-center'>
+        <p className='text-muted-foreground'>No sales data available</p>
+      </div>
+    );
+  }
 
-  // Prepare chart data
-  const last7DaysSales = salesData?.filter((sale: any) => {
-    const saleDate = new Date(sale.created_at);
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    return saleDate >= sevenDaysAgo && sale.status === 'approved';
-  }).reduce((acc: any, sale: any) => {
-    const date = format(new Date(sale.created_at), 'MMM dd');
-    acc[date] = (acc[date] || 0) + sale.total_amount;
-    return acc;
-  }, {});
-
-  const salesChartData = Object.entries(last7DaysSales || {}).map(([date, amount]) => ({
-    date,
-    amount,
-  }));
-
-  const renderMetricCards = () => {
-    if (user.role === 'admin' || user.role === 'accountant') {
-      return (
-        <>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">KES {totalSales.toLocaleString()}</div>
-              <div className="text-xs text-muted-foreground">
-                +20.1% from last month
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Sales</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{pendingSales}</div>
-              <div className="text-xs text-muted-foreground">
-                Requires approval
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      );
-    }
-    return null;
-  };
-
-  const renderSalesChart = () => {
-    if (user.role === 'admin' || user.role === 'accountant') {
-      return (
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Sales Overview</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={salesChartData}>
-                <XAxis
-                  dataKey="date"
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `KES ${value}`}
-                />
-                <Tooltip />
-                <Bar
-                  dataKey="amount"
-                  fill="#adfa1d"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      );
-    }
-    return null;
-  };
+  // Sort the data by date
+  chartData.sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6 w-[80vw]">
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {renderMetricCards()}
-
-            {/* Always visible cards */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalCustomers}</div>
-                <div className="text-xs text-muted-foreground">
-                  Active customers
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{lowStockItems}</div>
-                <div className="text-xs text-muted-foreground">
-                  Requires attention
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {renderSalesChart()}
-
-          {/* Recent Activity - Modified based on role */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            {(user.role === 'admin' || user.role === 'accountant') && (
-              <Card className="col-span-4">
-                <CardHeader>
-                  <CardTitle>Recent Sales</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-8">
-                    {salesData?.slice(0, 5).map((sale: any) => (
-                      <div key={sale.id} className="flex items-center">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium leading-none">
-                            {sale.customer_name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {format(new Date(sale.created_at), 'MMM dd, yyyy')}
-                          </p>
-                        </div>
-                        <div className="ml-auto font-medium">
-                          KES {sale.total_amount}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Low Stock Products</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-8">
-                  {inventoryData
-                    ?.filter((item: any) => item.quantity <= item.min_stock_level)
-                    .slice(0, 5)
-                    .map((item: any) => (
-                      <div key={item.id} className="flex items-center">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium leading-none">
-                            {item.product.name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Quantity: {item.quantity}
-                          </p>
-                        </div>
-                        <div className="ml-auto">
-                          <Badge variant="destructive">Low Stock</Badge>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          {/* Add additional analytics content here */}
-        </TabsContent>
-      </Tabs>
+    <div className='h-[calc(100vh-4rem)] w-[75vw] p-6'>
+      <ResponsiveContainer width='100%' height='100%'>
+        <BarChart
+          data={chartData}
+          margin={{
+            top: 20,
+            right: 30,
+            left: 60,
+            bottom: 20,
+          }}>
+          <defs>
+            <linearGradient id='salesGradient' x1='0' y1='0' x2='0' y2='1'>
+              <stop offset='0%' stopColor='#2563eb' stopOpacity={0.9} />
+              <stop offset='45%' stopColor='#3b82f6' stopOpacity={0.7} />
+              <stop offset='95%' stopColor='#60a5fa' stopOpacity={0.5} />
+            </linearGradient>
+            <linearGradient id='salesHover' x1='0' y1='0' x2='0' y2='1'>
+              <stop offset='0%' stopColor='#1d4ed8' stopOpacity={1} />
+              <stop offset='45%' stopColor='#2563eb' stopOpacity={0.8} />
+              <stop offset='95%' stopColor='#3b82f6' stopOpacity={0.6} />
+            </linearGradient>
+            <linearGradient id='corporateGradient' x1='0' y1='0' x2='0' y2='1'>
+              <stop offset='0%' stopColor='#0284c7' stopOpacity={0.9} />
+              <stop offset='45%' stopColor='#0ea5e9' stopOpacity={0.7} />
+              <stop offset='95%' stopColor='#38bdf8' stopOpacity={0.5} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            strokeDasharray='3 3'
+            vertical={false}
+            stroke='#e2e8f0'
+            opacity={0.5}
+          />
+          <XAxis
+            dataKey='date'
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            stroke='#64748b'
+          />
+          <YAxis
+            tickFormatter={(value) => `KES ${value.toLocaleString()}`}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            stroke='#64748b'
+          />
+          <Tooltip<ValueType, NameType>
+            content={CustomTooltip}
+            cursor={{ fill: "rgba(148, 163, 184, 0.1)" }}
+          />
+          <Bar
+            dataKey='sales'
+            fill='url(#corporateGradient)'
+            radius={[6, 6, 0, 0]}
+            maxBarSize={50}
+            onMouseEnter={(data, index) => {
+              document
+                .querySelector(`#bar-${index}`)
+                ?.setAttribute("fill", "url(#salesHover)");
+            }}
+            onMouseLeave={(data, index) => {
+              document
+                .querySelector(`#bar-${index}`)
+                ?.setAttribute("fill", "url(#corporateGradient)");
+            }}
+          />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
-} 
+}
+
+export default DashboardContent;
