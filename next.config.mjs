@@ -14,7 +14,11 @@ const nextConfig = {
     config.resolve.alias.encoding = false;
     return config;
   },
-  output: 'standalone'
+  output: 'standalone',
+  experimental: {
+    optimizePackageImports: ['@/components'],
+    serverComponentsExternalPackages: ['@tremor/react']
+  }
 };
 
 export default pwa(nextConfig);
