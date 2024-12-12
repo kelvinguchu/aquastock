@@ -1,5 +1,3 @@
-'use client';
-
 import { redirect } from "next/navigation";
 import type { Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
