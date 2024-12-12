@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, X } from "lucide-react";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,14 +25,16 @@ export function DateRangePicker({
   className,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [tempRange, setTempRange] = React.useState<DateRange | null>(dateRange);
+  const [tempRange, setTempRange] = React.useState<DateRange | undefined>(
+    dateRange || undefined
+  );
 
   React.useEffect(() => {
-    setTempRange(dateRange);
+    setTempRange(dateRange || undefined);
   }, [dateRange]);
 
   const handleApply = () => {
-    onDateRangeChange(tempRange);
+    onDateRangeChange(tempRange || null);
     setIsOpen(false);
   };
 
