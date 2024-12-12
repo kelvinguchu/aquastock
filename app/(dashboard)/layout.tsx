@@ -1,17 +1,11 @@
 'use client';
 
 import { redirect } from "next/navigation";
-import type { Metadata } from "next";
 import type { Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
-import dynamic from 'next/dynamic';
-import { SidebarProvider } from "@/components/ui/sidebar";
+import DashboardClient from "@/components/dashboard/DashboardClient";
 
-const Dashboard = dynamic(() => import("@/components/dashboard/Dashboard"), {
-  ssr: true,
-});
-
-export const metadata: Metadata = {
+export const metadata = {
   title: "Dashboard | Aquatreat Inventory",
   description: "Manage your inventory with Aquatreat",
 };
@@ -42,15 +36,5 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  return (
-    <SidebarProvider>
-      <div className='flex min-h-screen flex-col'>
-        <Dashboard user={profile}>
-          <main className='flex w-full flex-col overflow-hidden'>
-            {children}
-          </main>
-        </Dashboard>
-      </div>
-    </SidebarProvider>
-  );
+  return <DashboardClient user={profile}>{children}</DashboardClient>;
 }

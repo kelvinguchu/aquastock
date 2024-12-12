@@ -16,8 +16,7 @@ const nextConfig = {
   },
   output: 'standalone',
   experimental: {
-    optimizePackageImports: ['@/components'],
-    serverComponentsExternalPackages: ['@tremor/react']
+    optimizePackageImports: ['@/components']
   }
 };
 
