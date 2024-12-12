@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ import { getLocationProducts, updateStockLevel, recordTransfer } from "@/lib/sup
 import { useToast } from "@/hooks/use-toast";
 import { TransferTables } from "./TransferTables";
 import { useAuth } from "@/hooks/use-auth";
+import { ArrowRight, PackageOpen } from "lucide-react";
 
 interface TransferDrawerProps {
   open: boolean;
@@ -106,64 +108,79 @@ export function TransferDrawer({ open, onOpenChange }: TransferDrawerProps) {
         <DrawerHeader>
           <DrawerTitle>Transfer Inventory</DrawerTitle>
           <DrawerDescription>
-            Transfer products between locations
+            Move products between Kamulu and Utawala stores
           </DrawerDescription>
         </DrawerHeader>
 
         <div className="flex flex-col gap-4 p-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant={transferDirection === 'kamulu-to-utawala' ? 'default' : 'outline'}
-              onClick={() => {
-                setTransferDirection('kamulu-to-utawala');
-                setSelectedProducts(new Map());
-              }}
-            >
-              Kamulu → Utawala
-            </Button>
-            <Button
-              variant={transferDirection === 'utawala-to-kamulu' ? 'default' : 'outline'}
-              onClick={() => {
-                setTransferDirection('utawala-to-kamulu');
-                setSelectedProducts(new Map());
-              }}
-            >
-              Utawala → Kamulu
-            </Button>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">
+              Select Transfer Direction
+            </label>
+            <div className="flex items-center gap-4">
+              <Button
+                variant={transferDirection === 'kamulu-to-utawala' ? 'default' : 'outline'}
+                onClick={() => {
+                  setTransferDirection('kamulu-to-utawala');
+                  setSelectedProducts(new Map());
+                }}
+                className="flex-1"
+              >
+                <ArrowRight className="mr-2 h-4 w-4" />
+                Kamulu to Utawala
+              </Button>
+              <Button
+                variant={transferDirection === 'utawala-to-kamulu' ? 'default' : 'outline'}
+                onClick={() => {
+                  setTransferDirection('utawala-to-kamulu');
+                  setSelectedProducts(new Map());
+                }}
+                className="flex-1"
+              >
+                <ArrowRight className="mr-2 h-4 w-4" />
+                Utawala to Kamulu
+              </Button>
+            </div>
           </div>
 
-          <TransferTables 
-            fromLocation={transferDirection === 'kamulu-to-utawala' ? 'kamulu' : 'utawala'}
-            toLocation={transferDirection === 'kamulu-to-utawala' ? 'utawala' : 'kamulu'}
-            selectedProducts={selectedProducts}
-            onProductSelect={(product) => {
-              setShowTransferDialog(true);
-              const currentAmount = selectedProducts.get(product.id) || 0;
-              setSelectedProducts(new Map(selectedProducts.set(product.id, currentAmount)));
-            }}
-            onProductRemove={handleRemoveProduct}
-          />
+          <div className="flex-1 overflow-hidden">
+            <TransferTables 
+              fromLocation={transferDirection === 'kamulu-to-utawala' ? 'kamulu' : 'utawala'}
+              toLocation={transferDirection === 'kamulu-to-utawala' ? 'utawala' : 'kamulu'}
+              selectedProducts={selectedProducts}
+              onProductSelect={(product) => {
+                setShowTransferDialog(true);
+                const currentAmount = selectedProducts.get(product.id) || 0;
+                setSelectedProducts(new Map(selectedProducts.set(product.id, currentAmount)));
+              }}
+              onProductRemove={handleRemoveProduct}
+            />
+          </div>
 
-          <div className="mt-auto pt-4 flex justify-end">
+          <div className="mt-auto pt-4 border-t">
             {selectedProducts.size > 0 && (
               <Button 
                 size="lg"
                 onClick={handleTransfer}
-                className="w-[200px]"
+                className="w-full"
               >
-                Confirm Transfer ({selectedProducts.size})
+                <PackageOpen className="mr-2 h-4 w-4" />
+                Create Transfer Request ({selectedProducts.size} {selectedProducts.size === 1 ? 'item' : 'items'})
               </Button>
             )}
           </div>
         </div>
       </DrawerContent>
 
-      {/* Transfer Dialog */}
+      {/* Transfer Amount Dialog */}
       {showTransferDialog && (
         <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Set Transfer Amount</DialogTitle>
+              <DialogDescription>
+                Specify the quantity to transfer for each product
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {Array.from(selectedProducts.entries()).map(([productId, amount]) => {
@@ -172,7 +189,12 @@ export function TransferDrawer({ open, onOpenChange }: TransferDrawerProps) {
 
                 return (
                   <div key={productId} className="space-y-2">
-                    <p className="text-sm font-medium">{product.name}</p>
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium">{product.name}</label>
+                      <span className="text-sm text-muted-foreground">
+                        Available: {product.inventory[0].quantity}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
@@ -186,11 +208,8 @@ export function TransferDrawer({ open, onOpenChange }: TransferDrawerProps) {
                           );
                           setSelectedProducts(new Map(selectedProducts.set(productId, newAmount)));
                         }}
-                        className="w-24"
+                        className="w-full"
                       />
-                      <span className="text-sm text-muted-foreground">
-                        / {product.inventory[0].quantity} available
-                      </span>
                     </div>
                   </div>
                 );
@@ -204,7 +223,7 @@ export function TransferDrawer({ open, onOpenChange }: TransferDrawerProps) {
                 onClick={() => setShowTransferDialog(false)}
                 disabled={Array.from(selectedProducts.values()).every(amount => amount === 0)}
               >
-                Add
+                Confirm Amounts
               </Button>
             </DialogFooter>
           </DialogContent>

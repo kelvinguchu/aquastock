@@ -3,7 +3,6 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
-import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -13,26 +12,26 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-interface DateRangePickerProps {
-  dateRange: DateRange | null;
-  onDateRangeChange: (dateRange: DateRange | null) => void;
+interface DatePickerProps {
+  date: Date | null;
+  onDateChange: (date: Date | null) => void;
   className?: string;
 }
 
-export function DateRangePicker({
-  dateRange,
-  onDateRangeChange,
+export function DatePicker({
+  date,
+  onDateChange,
   className,
-}: DateRangePickerProps) {
+}: DatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [tempRange, setTempRange] = React.useState<DateRange | null>(dateRange);
+  const [tempDate, setTempDate] = React.useState<Date | null>(date);
 
   React.useEffect(() => {
-    setTempRange(dateRange);
-  }, [dateRange]);
+    setTempDate(date);
+  }, [date]);
 
   const handleApply = () => {
-    onDateRangeChange(tempRange);
+    onDateChange(tempDate);
     setIsOpen(false);
   };
 
@@ -43,40 +42,26 @@ export function DateRangePicker({
           <Button
             variant={"outline"}
             className={cn(
-              "w-[300px] justify-start text-left font-normal",
-              !dateRange && "text-muted-foreground"
+              "w-[240px] justify-start text-left font-normal",
+              !date && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {dateRange?.from ? (
-              dateRange.to ? (
-                <>
-                  {format(dateRange.from, "LLL dd, y")} -{" "}
-                  {format(dateRange.to, "LLL dd, y")}
-                </>
-              ) : (
-                format(dateRange.from, "LLL dd, y")
-              )
-            ) : (
-              <span>Pick a date range</span>
-            )}
+            {date ? format(date, "LLL dd, y") : <span>Pick a date</span>}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={tempRange?.from}
-            selected={tempRange}
-            onSelect={setTempRange}
-            numberOfMonths={2}
+            mode="single"
+            selected={tempDate}
+            onSelect={setTempDate}
             disabled={(date) => date > new Date() || date < new Date('2023-01-01')}
           />
           <div className="flex justify-end p-3 border-t">
             <Button
               size="sm"
               onClick={handleApply}
-              disabled={!tempRange?.from || !tempRange?.to}
+              disabled={!tempDate}
             >
               Apply
             </Button>

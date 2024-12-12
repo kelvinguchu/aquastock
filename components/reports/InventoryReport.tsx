@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, Loader2 } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -30,6 +30,16 @@ import {
 import { cn } from "@/lib/utils";
 import { ReportWrapper } from "./ReportWrapper";
 import { useToast } from "@/hooks/use-toast";
+import dynamic from 'next/dynamic';
+import { format } from 'date-fns';
+import { pdf } from "@react-pdf/renderer";
+import { InventoryReportPDF } from '@/components/pdf/InventoryReportPDF';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ProductInventory {
   quantity: number;
@@ -105,10 +115,6 @@ export function InventoryReport() {
     (product: ProductWithUniqueId) => product.inventory[0].quantity === 0
   ).length;
 
-  const handleExport = () => {
-    // Implement CSV export logic
-  };
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -128,6 +134,48 @@ export function InventoryReport() {
       });
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      // Fetch logo first
+      const logoResponse = await fetch('/api/logo');
+      const { logo } = await logoResponse.json();
+
+      // Generate PDF with logo
+      const blob = await pdf(
+        <InventoryReportPDF
+          products={filteredProducts}
+          totalProducts={totalProducts}
+          lowStockProducts={lowStockProducts}
+          outOfStockProducts={outOfStockProducts}
+          selectedLocation={selectedLocation}
+          logo={logo}
+        />
+      ).toBlob();
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `inventory-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "PDF generated successfully",
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate PDF",
+      });
     }
   };
 
@@ -214,9 +262,10 @@ export function InventoryReport() {
             )} />
             Refresh
           </Button>
-          <Button onClick={handleExport}>
+          
+          <Button variant="outline" onClick={handleExportPDF}>
             <Download className="mr-2 h-4 w-4" />
-            Export Report
+            Export PDF
           </Button>
         </div>
       </div>

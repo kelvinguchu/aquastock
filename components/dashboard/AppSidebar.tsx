@@ -38,7 +38,6 @@ import { TransferDrawer } from "@/components/transfers/TransferDrawer";
 import { CreateSaleSheet } from "@/components/sales/CreateSaleDialog";
 import { cn } from "@/lib/utils";
 import { CreateLPOSheet } from "@/components/lpo/CreateLPOSheet";
-import { RequestDeductionSheet } from "@/components/request/RequestDeductionSheet";
 import Image from "next/image";
 
 interface AppSidebarProps {
@@ -77,7 +76,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const [showTransferDrawer, setShowTransferDrawer] = useState(false);
   const [showCreateSaleDialog, setShowCreateSaleDialog] = useState(false);
   const [showCreateLPOSheet, setShowCreateLPOSheet] = useState(false);
-  const [showRequestDeductionSheet, setShowRequestDeductionSheet] = useState(false);
 
   const handleRegisterSuccess = () => {
     setSheetOpen(false);
@@ -125,11 +123,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
           href: "/users",
           icon: Users,
         },
-        {
-          title: "Deduction Requests",
-          href: "/request",
-          icon: FileDown,
-        },
       ],
       actions: [
         {
@@ -157,11 +150,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
           icon: FileText,
           action: () => setShowCreateLPOSheet(true),
         },
-        {
-          title: "Request Deduction",
-          icon: FileDown,
-          action: () => setShowRequestDeductionSheet(true),
-        },
       ],
     },
     accountant: {
@@ -185,11 +173,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
           title: "LPO",
           href: "/lpo",
           icon: FileText,
-        },
-        {
-          title: "Deduction Requests",
-          href: "/request",
-          icon: FileDown,
         },
       ],
     },
@@ -220,11 +203,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
           href: "/transfers",
           icon: ArrowLeftRight,
         },
-        {
-          title: "Deduction Requests",
-          href: "/request",
-          icon: FileDown,
-        },
       ],
       actions: [
         {
@@ -245,20 +223,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
       ],
     },
     user: {
-      menu: [
-        {
-          title: "Deduction Requests",
-          href: "/request",
-          icon: FileDown,
-        },
-      ],
-      actions: [
-        {
-          title: "Request Deduction",
-          icon: FileDown,
-          action: () => setShowRequestDeductionSheet(true),
-        },
-      ],
+      menu: [],
     },
   };
 
@@ -358,11 +323,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
           </SidebarContent>
         </Sidebar>
       </div>
-
-      <RequestDeductionSheet
-        open={showRequestDeductionSheet}
-        onOpenChange={setShowRequestDeductionSheet}
-      />
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className='min-w-[30vw] sm:min-w-[540px]'>

@@ -35,9 +35,35 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ProductListProps {
   location: 'kamulu' | 'utawala';
+}
+
+interface Category {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  min_stock_level: number;
+  category_id: string | null;
+  inventory: Array<{
+    quantity: number;
+    location: 'kamulu' | 'utawala';
+  }>;
 }
 
 export function ProductList({ location }: ProductListProps) {
@@ -47,18 +73,34 @@ export function ProductList({ location }: ProductListProps) {
   const itemsPerPage = 10;
   const queryClient = useQueryClient();
   const [showStockDialog, setShowStockDialog] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [newQuantity, setNewQuantity] = useState<number>(0);
   const { toast } = useToast();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ['products', location],
     queryFn: () => getLocationProducts(location),
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ['product-categories'],
+    queryFn: async () => {
+      const response = await fetch('/api/product-categories');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      return response.json();
+    },
+  });
+
   const filteredAndPaginatedProducts = () => {
     let filtered = [...products];
+
+    if (selectedCategory) {
+      filtered = filtered.filter(product => 
+        product.category_id === selectedCategory
+      );
+    }
 
     if (searchTerm) {
       filtered = filtered.filter(product => 
@@ -83,6 +125,7 @@ export function ProductList({ location }: ProductListProps) {
 
   const handleStockAdjustment = async () => {
     try {
+      if (!selectedProduct) return;
       await updateStockLevel(
         selectedProduct.id,
         location,
@@ -102,6 +145,11 @@ export function ProductList({ location }: ProductListProps) {
         description: error.message,
       });
     }
+  };
+
+  const getCategoryName = (categoryId: string | null): string => {
+    const category = categories.find((c: Category) => c.id === categoryId);
+    return category?.name || 'Uncategorized';
   };
 
   if (isLoading) {
@@ -143,19 +191,44 @@ export function ProductList({ location }: ProductListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
+      <div className="flex items-center justify-between gap-4">
+        {/* Search and Category Filter Group */}
+        <div className="flex items-center gap-4 flex-1">
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-8"
+            />
+          </div>
+          
+          <Select
+            value={selectedCategory || "all"}
+            onValueChange={(value) => {
+              setSelectedCategory(value === "all" ? null : value);
               setCurrentPage(1);
             }}
-            className="pl-8"
-          />
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
+        {/* Refresh and Total Count */}
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
@@ -165,12 +238,13 @@ export function ProductList({ location }: ProductListProps) {
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <div className="text-sm text-muted-foreground">
-            Total: {totalProducts} products
-          </div>
+          <Badge variant="secondary" className="bg-white/50">
+            {totalProducts} products
+          </Badge>
         </div>
       </div>
 
+      {/* Table */}
       <div className={`rounded-md border transition-all duration-300 ${
         state === "expanded" ? "w-[75vw]" : "w-[93vw]"
       }`}>
@@ -178,6 +252,7 @@ export function ProductList({ location }: ProductListProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Stock Level</TableHead>
               <TableHead>Min. Stock</TableHead>
@@ -187,7 +262,7 @@ export function ProductList({ location }: ProductListProps) {
           <TableBody>
             {paginatedProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-4">
+                <TableCell colSpan={6} className="text-center py-4">
                   No products found
                 </TableCell>
               </TableRow>
@@ -195,6 +270,9 @@ export function ProductList({ location }: ProductListProps) {
               paginatedProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableCell>
+                    {getCategoryName(product.category_id)}
+                  </TableCell>
                   <TableCell>{product.description || "—"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

@@ -26,11 +26,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { createProduct } from "@/lib/supabase/supabase-actions";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
 
 const productSchema = z.object({
   name: z.string().min(2, "Product name is required"),
   description: z.string().optional(),
-  min_stock_level: z.string().transform((val) => parseFloat(val)),
+  min_stock_level: z.coerce.number(),
+  category_id: z.string().optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -43,12 +52,22 @@ interface AddProductDialogProps {
 export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
 
+  const { data: categories = [] } = useQuery({
+    queryKey: ['product-categories'],
+    queryFn: async () => {
+      const response = await fetch('/api/product-categories');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      return response.json();
+    },
+  });
+
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: "",
       description: "",
-      min_stock_level: "0",
+      min_stock_level: 0,
+      category_id: undefined,
     },
   });
 
@@ -58,10 +77,11 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
     try {
       setIsLoading(true);
       
-      await createProduct(
+      const result = await createProduct(
         values.name,
         values.description || null,
-        values.min_stock_level
+        values.min_stock_level,
+        values.category_id || null
       );
 
       // Invalidate both location queries to refresh the lists
@@ -72,6 +92,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
       form.reset();
       onOpenChange(false);
     } catch (error: any) {
+      console.error('Product creation error:', error); // Better error logging
       toast.error(error.message);
     } finally {
       setIsLoading(false);
@@ -130,6 +151,30 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="category_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categories.map((category: any) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

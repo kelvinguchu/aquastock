@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, RefreshCw, Clock } from "lucide-react";
-import { Loader } from "@/components/ui/loader";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
@@ -26,14 +25,9 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { format } from "date-fns";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreVertical, CheckCircle, XCircle } from "lucide-react";
+import {Loader2} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Transfer {
   id: string;
@@ -59,6 +53,8 @@ export function TransfersTable() {
   const itemsPerPage = 10;
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canManageTransfers = user?.role === "clerk";
 
   const { data: transfers = [], isLoading } = useQuery({
     queryKey: ['transfers'],
@@ -96,7 +92,20 @@ export function TransfersTable() {
     queryClient.invalidateQueries({ queryKey: ['transfers'] });
   };
 
+  const [statusLoading, setStatusLoading] = useState<string | null>(null);
+
   const handleStatusChange = async (transferId: string, newStatus: 'pending' | 'completed' | 'cancelled') => {
+    if (!canManageTransfers) {
+      toast({
+        variant: "destructive",
+        title: "Unauthorized",
+        description: "Only clerks can manage transfer statuses",
+      });
+      return;
+    }
+
+    setStatusLoading(transferId);
+
     try {
       const response = await fetch(`/api/transfers/${transferId}`, {
         method: 'PATCH',
@@ -124,6 +133,8 @@ export function TransfersTable() {
         title: "Error",
         description: error.message || "Failed to update status",
       });
+    } finally {
+      setStatusLoading(null);
     }
   };
 
@@ -215,6 +226,7 @@ export function TransfersTable() {
               <TableHead>Quantity</TableHead>
               <TableHead>Transferred By</TableHead>
               <TableHead>Status</TableHead>
+              {canManageTransfers && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -246,59 +258,64 @@ export function TransfersTable() {
                   <TableCell>{transfer.quantity}</TableCell>
                   <TableCell>{transfer.profiles.full_name}</TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Badge
-                          variant={
-                            transfer.status === 'completed' 
-                              ? 'default' 
-                              : transfer.status === 'pending'
-                              ? 'outline'
-                              : 'destructive'
-                          }
-                          className={cn(
-                            "cursor-pointer",
-                            transfer.status === 'completed' 
-                              ? "bg-green-100 text-green-800" 
-                              : transfer.status === 'pending'
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          )}
-                        >
-                          {transfer.status}
-                        </Badge>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {transfer.status !== 'completed' && (
-                          <DropdownMenuItem
-                            onClick={() => handleStatusChange(transfer.id, 'completed')}
-                            className="text-green-600"
-                          >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Mark as Completed
-                          </DropdownMenuItem>
-                        )}
-                        {transfer.status !== 'pending' && (
-                          <DropdownMenuItem
-                            onClick={() => handleStatusChange(transfer.id, 'pending')}
-                            className="text-yellow-600"
-                          >
-                            <Clock className="mr-2 h-4 w-4" />
-                            Mark as Pending
-                          </DropdownMenuItem>
-                        )}
-                        {transfer.status !== 'cancelled' && (
-                          <DropdownMenuItem
-                            onClick={() => handleStatusChange(transfer.id, 'cancelled')}
-                            className="text-red-600"
-                          >
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Cancel Transfer
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Badge
+                      variant={
+                        transfer.status === 'completed' 
+                          ? 'default' 
+                          : transfer.status === 'pending'
+                          ? 'outline'
+                          : 'destructive'
+                      }
+                      className={cn(
+                        transfer.status === 'completed' 
+                          ? "bg-green-100 text-green-800" 
+                          : transfer.status === 'pending'
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                      )}
+                    >
+                      {transfer.status}
+                    </Badge>
                   </TableCell>
+                  {canManageTransfers && (
+                    <TableCell className="text-right">
+                      {transfer.status === 'pending' && (
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatusChange(transfer.id, 'completed')}
+                            className="bg-green-100 text-green-800 hover:bg-green-200"
+                            disabled={statusLoading === transfer.id}
+                          >
+                            {statusLoading === transfer.id ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Updating...
+                              </>
+                            ) : (
+                              'Complete'
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleStatusChange(transfer.id, 'cancelled')}
+                            className="text-red-800 hover:bg-red-100"
+                            disabled={statusLoading === transfer.id}
+                          >
+                            {statusLoading === transfer.id ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Updating...
+                              </>
+                            ) : (
+                              'Cancel'
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}

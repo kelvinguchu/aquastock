@@ -48,6 +48,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
+import { Toast } from "@/components/ui/toast";
 
 interface SaleItem {
   product_id: string;
@@ -71,6 +73,7 @@ const saleFormSchema = z.object({
   payment_method: z.enum(["cash", "bank_transfer", "mpesa", "cheque"]),
   payment_reference: z.string().optional(),
   save_customer: z.boolean().default(false),
+  request_id: z.string().optional(),
   items: z.array(z.object({
     product_id: z.string(),
     quantity: z.number().positive(),
@@ -100,6 +103,8 @@ export function CreateSaleSheet({ open, onOpenChange, defaultProducts = [] }: Cr
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [linkedRequestId, setLinkedRequestId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const { toast } = useToast();
 
   // Fetch existing customers
   const { data: customers = [] } = useQuery<Customer[]>({
@@ -161,12 +166,15 @@ export function CreateSaleSheet({ open, onOpenChange, defaultProducts = [] }: Cr
     }
   };
 
-  async function onSubmit(values: SaleFormValues) {
+  const onSubmit = async (values: SaleFormValues) => {
     try {
-      setIsLoading(true);
-      
+      setIsCreating(true);
+
+      // Create a new object without save_customer field for API submission
+      const { save_customer, ...saleData } = values;
+
       // If save_customer is true and no customer_id exists, create a new customer
-      if (values.save_customer && !values.customer_id) {
+      if (save_customer && !values.customer_id) {
         const customerResponse = await fetch("/api/customers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -181,30 +189,45 @@ export function CreateSaleSheet({ open, onOpenChange, defaultProducts = [] }: Cr
           throw new Error("Failed to create customer");
         }
 
-        const customer: Customer = await customerResponse.json();
-        values.customer_id = customer.id;
+        const customer = await customerResponse.json();
+        saleData.customer_id = customer.id;
+      }
+
+      // Add request_id if this sale is linked to a request
+      if (linkedRequestId) {
+        saleData.request_id = linkedRequestId;
       }
 
       const response = await fetch("/api/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify(saleData), // Send saleData instead of values
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(await response.text());
+        throw new Error(data.error || "Failed to create sale");
       }
 
       await queryClient.invalidateQueries({ queryKey: ["sales"] });
-      toast.success("Sale created successfully");
-      form.reset();
+      
+      toast({
+        title: "Success",
+        description: "Sale created successfully",
+      } as any);
+
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to create sale",
+      } as any);
     } finally {
-      setIsLoading(false);
+      setIsCreating(false); // End loading regardless of outcome
     }
-  }
+  };
 
   const handleClearForm = () => {
     form.reset({
@@ -218,6 +241,25 @@ export function CreateSaleSheet({ open, onOpenChange, defaultProducts = [] }: Cr
       items: [],
     });
   };
+
+  // Add useEffect to handle customer selection
+  useEffect(() => {
+    const customerId = form.watch('customer_id');
+    if (customerId) {
+      // If customer is selected from existing customers, set save_customer to false
+      form.setValue('save_customer', false);
+    } else {
+      // If customer details are being entered manually, set save_customer to true
+      const customerName = form.watch('customer_name');
+      const customerPhone = form.watch('customer_phone');
+      const customerEmail = form.watch('customer_email');
+      
+      if (customerName || customerPhone || customerEmail) {
+        form.setValue('save_customer', true);
+      }
+    }
+  }, [form.watch('customer_id'), form.watch('customer_name'), 
+      form.watch('customer_phone'), form.watch('customer_email')]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -442,8 +484,8 @@ export function CreateSaleSheet({ open, onOpenChange, defaultProducts = [] }: Cr
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? (
+                <Button type="submit" disabled={isCreating}>
+                  {isCreating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Creating...

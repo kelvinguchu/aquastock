@@ -9,9 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, Loader2 } from "lucide-react";
+import { Download, RefreshCw, Loader2, X } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -26,6 +27,9 @@ import { DateRange } from "react-day-picker";
 import { ReportWrapper } from "./ReportWrapper";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { pdf } from "@react-pdf/renderer";
+import { SalesReportPDF } from '@/components/pdf/SalesReportPDF';
+import { ClearDateFilters } from "./ClearDateFilters";
 
 interface SaleItem {
   quantity: number;
@@ -56,10 +60,32 @@ interface Sale {
 }
 
 export function SalesReport() {
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'single' | 'range' | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Handler for single date selection
+  const handleDateChange = (date: Date | null) => {
+    setSelectedDate(date);
+    setDateRange(null); // Clear range when single date is selected
+    setActiveFilter(date ? 'single' : null);
+  };
+
+  // Handler for date range selection
+  const handleDateRangeChange = (range: DateRange | null) => {
+    setDateRange(range);
+    setSelectedDate(null); // Clear single date when range is selected
+    setActiveFilter(range ? 'range' : null);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedDate(null);
+    setDateRange(null);
+    setActiveFilter(null);
+  };
 
   const { data: sales = [], isLoading } = useQuery<Sale[]>({
     queryKey: ["sales", dateRange],
@@ -73,10 +99,30 @@ export function SalesReport() {
   });
 
   const filteredSales = sales.filter((sale: Sale) => {
-    if (dateRange?.from && dateRange.to) {
+    if (activeFilter === 'single' && selectedDate) {
       const saleDate = new Date(sale.created_at);
-      return saleDate >= dateRange.from && saleDate <= dateRange.to;
+      const compareDate = new Date(selectedDate);
+      
+      // Set hours to 0 for accurate date comparison
+      saleDate.setHours(0, 0, 0, 0);
+      compareDate.setHours(0, 0, 0, 0);
+      
+      return saleDate.getTime() === compareDate.getTime();
     }
+
+    if (activeFilter === 'range' && dateRange?.from && dateRange.to) {
+      const saleDate = new Date(sale.created_at);
+      const startDate = new Date(dateRange.from);
+      const endDate = new Date(dateRange.to);
+      
+      // Set hours to 0 for accurate date comparison
+      saleDate.setHours(0, 0, 0, 0);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      
+      return saleDate >= startDate && saleDate <= endDate;
+    }
+
     return true;
   });
 
@@ -113,6 +159,68 @@ export function SalesReport() {
       });
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const logoResponse = await fetch('/api/logo');
+      const { logo } = await logoResponse.json();
+
+      // Map sales data to match PDF component expectations
+      const salesForPDF = filteredSales.map(sale => ({
+        ...sale,
+        invoice_number: `INV-${sale.id.slice(0, 8)}`,
+      }));
+
+      // Prepare date filter information
+      const dateFilter = activeFilter 
+        ? {
+            type: activeFilter,
+            ...(activeFilter === 'single' && selectedDate 
+              ? { date: selectedDate }
+              : activeFilter === 'range' && dateRange?.from && dateRange.to
+              ? { 
+                  dateRange: {
+                    startDate: dateRange.from,
+                    endDate: dateRange.to
+                  }
+                }
+              : {}
+            )
+          }
+        : undefined;
+
+      const blob = await pdf(
+        <SalesReportPDF
+          sales={salesForPDF}
+          totalAmount={totalSales}
+          dateFilter={dateFilter}
+          logo={logo}
+        />
+      ).toBlob();
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `sales-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "PDF generated successfully",
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate PDF",
+      });
     }
   };
 
@@ -170,10 +278,21 @@ export function SalesReport() {
   return (
     <ReportWrapper>
       <div className="flex items-center justify-between">
-        <div className="flex gap-4">
-          <DatePickerWithRange
-            date={dateRange}
-            onDateChange={(date: DateRange | null) => setDateRange(date)}
+        <div className="flex items-center gap-4">
+          <div className="flex gap-4">
+            <DatePicker
+              date={selectedDate}
+              onDateChange={handleDateChange}
+            />
+            <span className="text-sm text-muted-foreground">or</span>
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={handleDateRangeChange}
+            />
+          </div>
+          <ClearDateFilters 
+            show={!!selectedDate || !!dateRange}
+            onClear={handleClearFilters}
           />
         </div>
         <div className="flex gap-2">
@@ -188,9 +307,9 @@ export function SalesReport() {
             )} />
             Refresh
           </Button>
-          <Button onClick={handleExport}>
+          <Button variant="outline" onClick={handleExportPDF}>
             <Download className="mr-2 h-4 w-4" />
-            Export Report
+            Export PDF
           </Button>
         </div>
       </div>

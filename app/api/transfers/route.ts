@@ -10,7 +10,7 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Get transfers with product and user details using separate queries
+    // Optimize the query by limiting fields and using more efficient joins
     const { data: transfers, error: transferError } = await supabase
       .from('transfers')
       .select(`
@@ -22,40 +22,27 @@ export async function GET() {
         status,
         transferred_by,
         created_at,
-        products (
+        products!inner (
           name
+        ),
+        profiles!inner (
+          full_name
         )
       `)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100); // Add reasonable limit
 
     if (transferError) {
       console.error("Transfer Error:", transferError);
       throw transferError;
     }
 
-    // If no transfers exist, return empty array
-    if (!transfers || transfers.length === 0) {
-      return NextResponse.json([]);
-    }
-
-    // Get user details for each transfer
-    const { data: profiles, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', transfers.map(t => t.transferred_by));
-
-    if (profileError) {
-      console.error("Profile Error:", profileError);
-      throw profileError;
-    }
-
-    // Map profiles to transfers
-    const transfersWithUserDetails = transfers.map(transfer => ({
-      ...transfer,
-      profiles: profiles?.find(p => p.id === transfer.transferred_by) || { full_name: 'Unknown User' }
-    }));
-
-    return NextResponse.json(transfersWithUserDetails);
+    // Add cache headers
+    return new NextResponse(JSON.stringify(transfers), {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    });
   } catch (error: any) {
     console.error("Server Error:", error);
     return new NextResponse(

@@ -9,7 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Button } from "@/components/ui/button";
 import { Download, RefreshCw } from "lucide-react";
 import {
@@ -22,17 +23,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { ReportWrapper } from "./ReportWrapper";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { pdf } from "@react-pdf/renderer";
+import { LPOReportPDF } from '@/components/pdf/LPOReportPDF';
+import { ClearDateFilters } from "./ClearDateFilters";
 
 interface LPOItem {
   product: {
@@ -56,11 +53,32 @@ interface LPO {
 }
 
 export function LPOReport() {
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
-  const [filterLocation, setFilterLocation] = useState<string>("all");
+  const [activeFilter, setActiveFilter] = useState<'single' | 'range' | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Handler for single date selection
+  const handleDateChange = (date: Date | null) => {
+    setSelectedDate(date);
+    setDateRange(null); // Clear range when single date is selected
+    setActiveFilter(date ? 'single' : null);
+  };
+
+  // Handler for date range selection
+  const handleDateRangeChange = (range: DateRange | null) => {
+    setDateRange(range);
+    setSelectedDate(null); // Clear single date when range is selected
+    setActiveFilter(range ? 'range' : null);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedDate(null);
+    setDateRange(null);
+    setActiveFilter(null);
+  };
 
   const { data: lpos = [], isLoading } = useQuery<LPO[]>({
     queryKey: ["lpos", dateRange],
@@ -72,6 +90,47 @@ export function LPOReport() {
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+
+  const filteredLPOs = lpos.filter((lpo: LPO) => {
+    if (activeFilter === 'single' && selectedDate) {
+      const lpoDate = new Date(lpo.created_at);
+      const compareDate = new Date(selectedDate);
+      
+      // Set hours to 0 for accurate date comparison
+      lpoDate.setHours(0, 0, 0, 0);
+      compareDate.setHours(0, 0, 0, 0);
+      
+      return lpoDate.getTime() === compareDate.getTime();
+    }
+
+    if (activeFilter === 'range' && dateRange?.from && dateRange.to) {
+      const lpoDate = new Date(lpo.created_at);
+      const startDate = new Date(dateRange.from);
+      const endDate = new Date(dateRange.to);
+      
+      // Set hours to 0 for accurate date comparison
+      lpoDate.setHours(0, 0, 0, 0);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      
+      return lpoDate >= startDate && lpoDate <= endDate;
+    }
+
+    return true;
+  });
+
+  // Calculate metrics
+  const totalLPOs = filteredLPOs.length;
+  const totalAmount = filteredLPOs.reduce(
+    (acc: number, lpo: LPO) => acc + lpo.total_amount,
+    0
+  );
+  const pendingLPOs = filteredLPOs.filter(
+    (lpo: LPO) => lpo.status === "pending"
+  ).length;
+  const approvedLPOs = filteredLPOs.filter(
+    (lpo: LPO) => lpo.status === "approved"
+  ).length;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -92,37 +151,63 @@ export function LPOReport() {
     }
   };
 
-  const filteredLPOs = lpos.filter((lpo: LPO) => {
-    let matchesDate = true;
-    let matchesLocation = true;
+  const handleExportPDF = async () => {
+    try {
+      const logoResponse = await fetch('/api/logo');
+      const { logo } = await logoResponse.json();
 
-    if (dateRange?.from && dateRange.to) {
-      const lpoDate = new Date(lpo.created_at);
-      matchesDate = lpoDate >= dateRange.from && lpoDate <= dateRange.to;
+      const lposForPDF = filteredLPOs.map(lpo => ({
+        ...lpo,
+        lpo_number: `LPO-${lpo.id.slice(0, 8)}`,
+      }));
+
+      const dateFilter = activeFilter 
+        ? {
+            type: activeFilter,
+            ...(activeFilter === 'single' && selectedDate 
+              ? { date: selectedDate }
+              : activeFilter === 'range' && dateRange?.from && dateRange.to
+              ? { 
+                  dateRange: {
+                    startDate: dateRange.from,
+                    endDate: dateRange.to
+                  }
+                }
+              : {}
+            )
+          }
+        : undefined;
+
+      const blob = await pdf(
+        <LPOReportPDF
+          lpos={lposForPDF}
+          totalAmount={totalAmount}
+          dateFilter={dateFilter}
+          logo={logo}
+        />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `lpo-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "PDF generated successfully",
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate PDF",
+      });
     }
-
-    if (filterLocation !== "all") {
-      matchesLocation = lpo.target_location === filterLocation;
-    }
-
-    return matchesDate && matchesLocation;
-  });
-
-  // Calculate metrics
-  const totalLPOs = filteredLPOs.length;
-  const totalAmount = filteredLPOs.reduce(
-    (acc: number, lpo: LPO) => acc + lpo.total_amount,
-    0
-  );
-  const pendingLPOs = filteredLPOs.filter(
-    (lpo: LPO) => lpo.status === "pending"
-  ).length;
-  const approvedLPOs = filteredLPOs.filter(
-    (lpo: LPO) => lpo.status === "approved"
-  ).length;
-
-  const handleExport = () => {
-    // Implement CSV export logic
   };
 
   if (isLoading) {
@@ -182,24 +267,22 @@ export function LPOReport() {
   return (
     <ReportWrapper>
       <div className="flex items-center justify-between">
-        <div className="flex gap-4">
-          <DatePickerWithRange
-            date={dateRange}
-            onDateChange={(date: DateRange | null) => setDateRange(date)}
+        <div className="flex items-center gap-4">
+          <div className="flex gap-4">
+            <DatePicker
+              date={selectedDate}
+              onDateChange={handleDateChange}
+            />
+            <span className="text-sm text-muted-foreground">or</span>
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={handleDateRangeChange}
+            />
+          </div>
+          <ClearDateFilters 
+            show={!!selectedDate || !!dateRange}
+            onClear={handleClearFilters}
           />
-          <Select
-            value={filterLocation}
-            onValueChange={setFilterLocation}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
-              <SelectItem value="kamulu">Kamulu Store</SelectItem>
-              <SelectItem value="utawala">Utawala Store</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -213,9 +296,9 @@ export function LPOReport() {
             )} />
             Refresh
           </Button>
-          <Button onClick={handleExport}>
+          <Button variant="outline" onClick={handleExportPDF}>
             <Download className="mr-2 h-4 w-4" />
-            Export Report
+            Export PDF
           </Button>
         </div>
       </div>

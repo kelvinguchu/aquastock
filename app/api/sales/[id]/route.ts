@@ -26,8 +26,6 @@ export async function PATCH(
     const body = await request.json();
     const { status, approved_by } = body;
 
-    console.log('Processing sale approval:', { saleId: params.id, status, approved_by });
-
     if (status === 'approved') {
       const { data: sale, error: saleError } = await supabase
         .from("sales")
@@ -46,7 +44,28 @@ export async function PATCH(
         throw saleError;
       }
 
-      console.log('Sale data:', sale);
+      // Check stock levels before approving
+      for (const item of sale.sale_items) {
+        const { data: inventory, error: inventoryError } = await supabase
+          .from("inventory")
+          .select("quantity")
+          .eq("product_id", item.product_id)
+          .eq("location", 'utawala')
+          .single();
+
+        if (inventoryError) throw inventoryError;
+
+        if (!inventory || inventory.quantity < item.quantity) {
+          return NextResponse.json(
+            { 
+              error: "Insufficient stock",
+              details: "Some items have insufficient stock. Please check inventory levels.",
+              checkInventory: true
+            },
+            { status: 400 }
+          );
+        }
+      }
 
       const inventoryTransactions = sale.sale_items.map((item: any) => ({
         product_id: item.product_id,
@@ -56,8 +75,6 @@ export async function PATCH(
         reference_id: sale.id,
         created_by: user.id,
       }));
-
-      console.log('Creating inventory transactions:', inventoryTransactions);
 
       const { error: transactionError } = await supabase
         .from("inventory_transactions")
@@ -69,7 +86,6 @@ export async function PATCH(
       }
 
       for (const item of sale.sale_items) {
-        console.log('Updating inventory for item:', item);
 
         const { data: currentInventory, error: fetchError } = await supabase
           .from("inventory")
@@ -82,8 +98,6 @@ export async function PATCH(
           console.error('Error fetching current inventory:', fetchError);
           throw fetchError;
         }
-
-        console.log('Current inventory:', currentInventory);
 
         const { error: inventoryError } = await supabase
           .from("inventory")
@@ -114,8 +128,6 @@ export async function PATCH(
       console.error('Error updating sale status:', error);
       throw error;
     }
-
-    console.log('Sale successfully updated:', updatedSale);
     return NextResponse.json(updatedSale);
   } catch (error: any) {
     console.error('Final error:', error);

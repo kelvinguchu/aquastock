@@ -290,34 +290,22 @@ export async function getProducts(): Promise<Product[]> {
   }
 }
 
-export async function getLocationProducts(
-  location: "kamulu" | "utawala"
-): Promise<Product[]> {
+export async function getLocationProducts(location: string) {
   try {
     const supabase = await createClient();
-
     const { data, error } = await supabase
-      .from("products")
-      .select(
-        `
-        id,
-        name,
-        description,
-        min_stock_level,
-        created_at,
-        updated_at,
-        inventory!inner (
-          quantity,
-          location
-        )
-      `
-      )
-      .eq("inventory.location", location)
-      .order("name");
+      .from('products')
+      .select(`
+        *,
+        category:product_categories(id, name),
+        inventory!inner(quantity)
+      `)
+      .eq('inventory.location', location);
 
     if (error) throw error;
     return data;
   } catch (error) {
+    console.error('Error fetching products:', error);
     throw error;
   }
 }
@@ -326,44 +314,77 @@ export async function getLocationProducts(
 export async function createProduct(
   name: string,
   description: string | null,
-  min_stock_level: number
+  min_stock_level: number,
+  category_id: string | null = null
 ): Promise<void> {
   try {
     const supabase = await createClient();
 
-    // First, create the product
+    // First get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      throw new Error('Not authenticated');
+    }
+
+    // Then get their profile with role
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)  // Important: Query by user ID
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Profile error:', profileError);
+      throw new Error('Failed to fetch user profile');
+    }
+
+    if (!['admin', 'clerk'].includes(profile.role)) {
+      throw new Error('You do not have permission to create products');
+    }
+
+    // Create the product with category
     const { data: product, error: productError } = await supabase
       .from("products")
       .insert({
         name,
         description,
         min_stock_level,
+        category_id,
       })
       .select()
       .single();
 
-    if (productError) throw productError;
+    if (productError) {
+      console.error('Product creation error:', productError);
+      throw new Error(productError.message);
+    }
 
-    // Then create inventory entries for both locations
-    const { error: inventoryError } = await supabase.from("inventory").insert([
-      {
-        product_id: product.id,
-        location: "kamulu",
-        quantity: 0,
-      },
-      {
-        product_id: product.id,
-        location: "utawala",
-        quantity: 0,
-      },
-    ]);
+    // Create inventory entries
+    const { error: inventoryError } = await supabase
+      .from("inventory")
+      .insert([
+        {
+          product_id: product.id,
+          location: "kamulu",
+          quantity: 0,
+        },
+        {
+          product_id: product.id,
+          location: "utawala",
+          quantity: 0,
+        },
+      ]);
 
-    if (inventoryError) throw inventoryError;
+    if (inventoryError) {
+      console.error('Inventory creation error:', inventoryError);
+      throw new Error(inventoryError.message);
+    }
 
-    // Revalidate the products cache
     revalidatePath("/inventory/kamulu");
     revalidatePath("/inventory/utawala");
   } catch (error) {
+    console.error('Error in createProduct:', error);
     throw error;
   }
 }
@@ -407,62 +428,22 @@ export async function recordTransfer(transfer: TransferRecord): Promise<void> {
   try {
     const supabase = await createClient();
 
-    // First get current quantities
-    const { data: fromInventory, error: fromError } = await supabase
-      .from("inventory")
-      .select("quantity")
-      .eq("product_id", transfer.product_id)
-      .eq("location", transfer.from_location)
-      .single();
-
-    const { data: toInventory, error: toError } = await supabase
-      .from("inventory")
-      .select("quantity")
-      .eq("product_id", transfer.product_id)
-      .eq("location", transfer.to_location)
-      .single();
-
-    if (fromError || toError) throw fromError || toError;
-    if (!fromInventory || !toInventory) throw new Error("Inventory not found");
-
-    // Calculate new quantities
-    const newFromQuantity = fromInventory.quantity - transfer.quantity;
-    const newToQuantity = toInventory.quantity + transfer.quantity;
-
-    // Update both locations
-    const [fromLocation, toLocation] = await Promise.all([
-      supabase
-        .from("inventory")
-        .update({ quantity: newFromQuantity })
-        .eq("product_id", transfer.product_id)
-        .eq("location", transfer.from_location),
-
-      supabase
-        .from("inventory")
-        .update({ quantity: newToQuantity })
-        .eq("product_id", transfer.product_id)
-        .eq("location", transfer.to_location),
-    ]);
-
-    if (fromLocation.error) throw fromLocation.error;
-    if (toLocation.error) throw toLocation.error;
-
-    // Then record the transfer
-    const { error: transferError } = await supabase.from("transfers").insert({
-      product_id: transfer.product_id,
-      from_location: transfer.from_location,
-      to_location: transfer.to_location,
-      quantity: transfer.quantity,
-      transferred_by: transfer.transferred_by,
-      status: "completed",
-    });
+    // Create the transfer record with pending status
+    const { error: transferError } = await supabase
+      .from("transfers")
+      .insert({
+        product_id: transfer.product_id,
+        from_location: transfer.from_location,
+        to_location: transfer.to_location,
+        quantity: transfer.quantity,
+        transferred_by: transfer.transferred_by,
+        status: 'pending' // Explicitly set status as pending
+      });
 
     if (transferError) throw transferError;
 
-    revalidatePath("/inventory/kamulu");
-    revalidatePath("/inventory/utawala");
   } catch (error) {
-    console.error("Transfer error:", error);
+    console.error('Error recording transfer:', error);
     throw error;
   }
 }
@@ -473,7 +454,6 @@ export async function getSalesMetrics(): Promise<SaleMetrics> {
     const now = new Date();
     const thirtyDaysAgo = subMonths(now, 1);
 
-    console.log("Fetching sales from:", thirtyDaysAgo.toISOString(), "to:", now.toISOString());
 
     // Simplify the query first to check if we get any data
     const { data: dailySales, error } = await supabase
@@ -487,10 +467,8 @@ export async function getSalesMetrics(): Promise<SaleMetrics> {
       throw error;
     }
 
-    console.log("Raw daily sales:", dailySales);
 
     if (!dailySales || dailySales.length === 0) {
-      console.log("No sales data found");
       // Return empty data structure instead of throwing
       return {
         dailySales: [],
@@ -517,7 +495,6 @@ export async function getSalesMetrics(): Promise<SaleMetrics> {
       return acc;
     }, []);
 
-    console.log("Processed daily sales:", processedDailySales);
 
     // Get current day's sales
     const currentDayStart = startOfDay(now);
@@ -551,7 +528,6 @@ export async function getSalesMetrics(): Promise<SaleMetrics> {
       pendingSales: pendingSales || 0,
     };
 
-    console.log("Final result:", result);
     return result;
   } catch (error) {
     console.error("Error in getSalesMetrics:", error);
@@ -649,7 +625,6 @@ export async function testDatabaseConnection() {
       return false;
     }
 
-    console.log("Test data inserted successfully:", data);
     return true;
   } catch (error) {
     console.error("Database connection test failed:", error);

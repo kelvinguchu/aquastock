@@ -45,37 +45,50 @@ export function useAuth() {
   }, [supabase]);
 
   useEffect(() => {
-    const initAuth = async () => {
+    const getProfile = async () => {
       try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (error || !user) {
-          setState({ user: null, loading: false });
-          return;
-        }
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        
+        if (authUser) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authUser.id)
+            .single();
 
-        const profile = await fetchProfile(user.id);
-        setState({ user: profile, loading: false });
+          if (profile) {
+            const profileWithTimestamp = {
+              ...profile,
+              timestamp: Date.now()
+            };
+            localStorage.setItem('user_profile', JSON.stringify(profileWithTimestamp));
+            setState({ user: profile, loading: false });
+            return;
+          }
+        }
+        localStorage.removeItem('user_profile');
+        setState({ user: null, loading: false });
       } catch (error) {
+        console.error('Error fetching user profile:', error);
+        localStorage.removeItem('user_profile');
         setState({ user: null, loading: false });
       }
     };
 
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          setState({ user: profile, loading: false });
-        } else {
-          setState({ user: null, loading: false });
-        }
+    const storedProfile = localStorage.getItem('user_profile');
+    if (storedProfile) {
+      const parsed = JSON.parse(storedProfile);
+      const fiveMinutes = 5 * 60 * 1000;
+      if (Date.now() - parsed.timestamp < fiveMinutes) {
+        setState({ user: parsed, loading: false });
       }
-    );
+    }
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    getProfile();
+
+    const interval = setInterval(getProfile, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, [supabase, fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
