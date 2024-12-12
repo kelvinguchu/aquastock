@@ -1,8 +1,14 @@
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import type { Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
 import Dashboard from "@/components/dashboard/Dashboard";
 import { SidebarProvider } from "@/components/ui/sidebar";
+
+export const metadata: Metadata = {
+  title: "Dashboard | Aquatreat Inventory",
+  description: "Manage your inventory with Aquatreat",
+};
 
 export default async function DashboardLayout({
   children,

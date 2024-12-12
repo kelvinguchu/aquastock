@@ -14,9 +14,7 @@ const nextConfig = {
     config.resolve.alias.encoding = false;
     return config;
   },
-  experimental: {
-    serverActions: true,
-  }
+  output: 'standalone'
 };
 
 export default pwa(nextConfig);
