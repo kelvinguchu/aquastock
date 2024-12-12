@@ -14,10 +14,7 @@ const nextConfig = {
     config.resolve.alias.encoding = false;
     return config;
   },
-  output: 'standalone',
-  experimental: {
-    optimizePackageImports: ['@/components']
-  }
+  output: 'standalone'
 };
 
 export default pwa(nextConfig);
