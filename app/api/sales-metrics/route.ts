@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { format, subMonths, startOfDay, endOfDay, subDays } from "date-fns";
 import { NextResponse } from "next/server";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const supabase = await createClient();
