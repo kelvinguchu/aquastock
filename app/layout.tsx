@@ -18,9 +18,18 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Aquatreat Inventory",
   description: "Aquatreat Inventory System",
+  manifest: '/manifest.json',
+  themeColor: '#000000',
+  viewport: 'minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no, viewport-fit=cover',
   icons: {
-    icon: "/favicon.png",
+    icon: '/favicon.png',
+    apple: '/favicon.png'
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Aquatreat'
+  }
 };
 
 export default function RootLayout({
