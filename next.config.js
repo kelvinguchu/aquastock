@@ -2,7 +2,7 @@ const withPWA = require('next-pwa')({
   dest: 'public',
   register: false,
   skipWaiting: true,
-  disable: false,
+  disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
     {
       urlPattern: /^https?.*/,
@@ -29,23 +29,14 @@ const nextConfig = {
       },
     ],
   },
+  poweredByHeader: false,
+  compress: true,
+  reactStrictMode: true,
+  swcMinify: true,
   headers: async () => {
     return [
       {
         source: '/sw.js',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=0, must-revalidate',
-          },
-          {
-            key: 'Service-Worker-Allowed',
-            value: '/',
-          },
-        ],
-      },
-      {
-        source: '/custom-sw.js',
         headers: [
           {
             key: 'Cache-Control',
@@ -66,6 +57,27 @@ const nextConfig = {
           },
         ],
       },
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on'
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          }
+        ]
+      }
     ];
   },
 }
