@@ -15,6 +15,8 @@ const withPWA = require('next-pwa')({
       },
     },
   ],
+  buildExcludes: [/middleware-manifest\.json$/],
+  publicExcludes: ['!favicon.png']
 })
 
 /** @type {import('next').NextConfig} */

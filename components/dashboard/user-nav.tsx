@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import type { Profile } from "@/lib/types";
-import { LogOut, KeyRound, Eye, EyeOff, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { LogOut, KeyRound, Eye, EyeOff, Loader2, UserCircle2, Sun, Moon, Sunrise, Sunset } from "lucide-react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,36 @@ export function UserNav({ user }: UserNavProps) {
   const [newPassword, setNewPassword] = useState("");
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [greeting, setGreeting] = useState("");
+  const [GreetingIcon, setGreetingIcon] = useState<any>(Sun);
+
+  // Get first name for greeting
+  const firstName = user.full_name?.split(" ")[0] || "User";
+
+  const getTimeBasedGreetingAndIcon = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return { greeting: "Good morning", Icon: Sunrise };
+    if (hour >= 12 && hour < 17) return { greeting: "Good afternoon", Icon: Sun };
+    if (hour >= 17 && hour < 22) return { greeting: "Good evening", Icon: Sunset };
+    return { greeting: "Hello", Icon: Moon }; // For very late night/early morning
+  };
+
+  // Update greeting every minute
+  useEffect(() => {
+    const updateGreeting = () => {
+      const { greeting, Icon } = getTimeBasedGreetingAndIcon();
+      setGreeting(greeting);
+      setGreetingIcon(Icon);
+    };
+
+    // Initial greeting
+    updateGreeting();
+
+    // Update greeting every minute
+    const interval = setInterval(updateGreeting, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -102,12 +132,29 @@ export function UserNav({ user }: UserNavProps) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback>
-                {user.full_name?.split(" ").map((n) => n[0]).join("")}
-              </AvatarFallback>
-            </Avatar>
+          <Button 
+            variant="ghost" 
+            className="relative group"
+          >
+            <div className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 via-blue-400/10 to-blue-500/10 hover:from-blue-500/20 hover:via-blue-400/20 hover:to-blue-500/20 transition-all duration-300 flex items-center gap-3">
+              {/* Greeting Icon */}
+              <GreetingIcon 
+                className="w-4 h-4 text-blue-600/80 transition-transform group-hover:scale-110 group-hover:rotate-12"
+              />
+              
+              {/* Text Content */}
+              <div className="flex items-baseline gap-2">
+                <span className="text-base font-medium text-blue-600/80">
+                  {greeting},
+                </span>
+                <span className="text-lg font-semibold text-blue-700">
+                  {firstName}
+                </span>
+              </div>
+
+              {/* Profile Icon */}
+              <UserCircle2 className="w-5 h-5 text-blue-600/80 transition-transform group-hover:scale-110" />
+            </div>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>

@@ -281,7 +281,7 @@ export default function Users() {
 
   if (isLoading) {
     return (
-      <div className='w-[75vw] mx-auto space-y-4'>
+      <div className='w-[75vw] mx-auto space-y-4 mt-4'>
         <h2 className='text-3xl font-bold tracking-tight text-center'>Users</h2>
         <div className='flex items-center justify-between gap-4'>
           <div className='w-72 h-10 bg-gray-200 animate-pulse rounded-md' />

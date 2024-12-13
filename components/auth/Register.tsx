@@ -32,7 +32,7 @@ const formSchema = z.object({
   emailPrefix: z.string().min(2, "Email prefix is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   full_name: z.string().min(2, "Full name is required"),
-  role: z.enum(["accountant", "clerk", "user"] as const),
+  role: z.enum(["admin", "accountant", "clerk"] as const),
 });
 
 interface RegisterProps {
@@ -173,9 +173,9 @@ export default function Register({ onSuccess, className }: RegisterProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="accountant">Accountant</SelectItem>
                         <SelectItem value="clerk">Clerk</SelectItem>
-                        <SelectItem value="user">User</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
