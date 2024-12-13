@@ -41,7 +41,6 @@ const nextConfig = {
       '/*': ['./app/**/*']
     }
   },
-  output: 'export',
   headers: async () => {
     return [
       {
