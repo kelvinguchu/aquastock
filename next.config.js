@@ -36,8 +36,12 @@ const nextConfig = {
   experimental: {
     serverActions: true,
     serverComponentsExternalPackages: [],
+    optimizePackageImports: ['@radix-ui/react-icons'],
+    outputFileTracingIncludes: {
+      '/*': ['./app/**/*']
+    }
   },
-  output: 'standalone',
+  output: 'export',
   headers: async () => {
     return [
       {
