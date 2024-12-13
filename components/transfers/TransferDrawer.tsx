@@ -70,12 +70,14 @@ export function TransferDrawer({ open, onOpenChange }: TransferDrawerProps) {
           
           if (!sourceProduct || !targetProduct) return;
 
+          // Create transfer request with pending status
           await recordTransfer({
             product_id: productId,
             from_location: fromLocation,
             to_location: toLocation,
             quantity: amount,
             transferred_by: user.id,
+            status: 'pending' // Explicitly set status to pending
           });
         })
       );
@@ -83,10 +85,11 @@ export function TransferDrawer({ open, onOpenChange }: TransferDrawerProps) {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast({
         title: "Success",
-        description: "Transfer completed successfully",
+        description: "Transfer request created successfully. Awaiting clerk approval.",
       });
       setSelectedProducts(new Map());
       setShowTransferDialog(false);
+      onOpenChange(false); // Close the drawer after successful transfer
     } catch (error: any) {
       toast({
         variant: "destructive",

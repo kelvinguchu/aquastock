@@ -211,15 +211,20 @@ export function AppSidebar({ user }: AppSidebarProps) {
           action: () => setShowAddProductDialog(true),
         },
         {
-          title: "Transfer Stock",
-          icon: ArrowLeftRight,
-          action: () => setShowTransferDrawer(true),
-        },
-        {
           title: "Create Sale",
           icon: Plus,
           action: () => setShowCreateSaleDialog(true),
         },
+        {
+          title: "Transfer Stock",
+          icon: ArrowLeftRight,
+          action: () => setShowTransferDrawer(true),
+        },
+               {
+          title: "Create LPO",
+          icon: FileText,
+          action: () => setShowCreateLPOSheet(true),
+        }
       ],
     },
     user: {

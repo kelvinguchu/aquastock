@@ -424,28 +424,39 @@ interface TransferRecord {
 }
 
 // Add this function to record transfers
-export async function recordTransfer(transfer: TransferRecord): Promise<void> {
-  try {
-    const supabase = await createClient();
+export async function recordTransfer({
+  product_id,
+  from_location,
+  to_location,
+  quantity,
+  transferred_by,
+  status = 'pending'
+}: {
+  product_id: string;
+  from_location: string;
+  to_location: string;
+  quantity: number;
+  transferred_by: string;
+  status?: 'pending' | 'completed' | 'cancelled';
+}) {
+  const supabase = await createClient();
 
-    // Create the transfer record with pending status
-    const { error: transferError } = await supabase
-      .from("transfers")
-      .insert({
-        product_id: transfer.product_id,
-        from_location: transfer.from_location,
-        to_location: transfer.to_location,
-        quantity: transfer.quantity,
-        transferred_by: transfer.transferred_by,
-        status: 'pending' // Explicitly set status as pending
-      });
+  const { data, error } = await supabase
+    .from('transfers')
+    .insert({
+      product_id,
+      from_location,
+      to_location,
+      quantity,
+      transferred_by,
+      status,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
 
-    if (transferError) throw transferError;
-
-  } catch (error) {
-    console.error('Error recording transfer:', error);
-    throw error;
-  }
+  if (error) throw error;
+  return data;
 }
 
 export async function getSalesMetrics(): Promise<SaleMetrics> {

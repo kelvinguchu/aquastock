@@ -13,6 +13,7 @@ export async function PATCH(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    // Verify user role
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -27,112 +28,46 @@ export async function PATCH(
     const { status, approved_by } = body;
 
     if (status === 'approved') {
-      const { data: sale, error: saleError } = await supabase
-        .from("sales")
-        .select(`
-          *,
-          sale_items (
-            product_id,
-            quantity
-          )
-        `)
-        .eq("id", params.id)
-        .single();
+      // Call the stored procedure to approve the sale
+      const { data, error } = await supabase
+        .rpc('approve_sale', {
+          p_sale_id: params.id,
+          p_approved_by: user.id
+        });
 
-      if (saleError) {
-        console.error('Error fetching sale:', saleError);
-        throw saleError;
+      if (error) {
+        console.error('Error approving sale:', error);
+        return NextResponse.json(
+          { 
+            error: error.message,
+            checkInventory: error.message.includes('Insufficient stock')
+          }, 
+          { status: 400 }
+        );
       }
 
-      // Check stock levels before approving
-      for (const item of sale.sale_items) {
-        const { data: inventory, error: inventoryError } = await supabase
-          .from("inventory")
-          .select("quantity")
-          .eq("product_id", item.product_id)
-          .eq("location", 'utawala')
-          .single();
-
-        if (inventoryError) throw inventoryError;
-
-        if (!inventory || inventory.quantity < item.quantity) {
-          return NextResponse.json(
-            { 
-              error: "Insufficient stock",
-              details: "Some items have insufficient stock. Please check inventory levels.",
-              checkInventory: true
-            },
-            { status: 400 }
-          );
-        }
-      }
-
-      const inventoryTransactions = sale.sale_items.map((item: any) => ({
-        product_id: item.product_id,
-        transaction_type: 'sale',
-        from_location: 'utawala',
-        quantity: item.quantity,
-        reference_id: sale.id,
-        created_by: user.id,
-      }));
-
-      const { error: transactionError } = await supabase
-        .from("inventory_transactions")
-        .insert(inventoryTransactions);
-
-      if (transactionError) {
-        console.error('Error creating transactions:', transactionError);
-        throw transactionError;
-      }
-
-      for (const item of sale.sale_items) {
-
-        const { data: currentInventory, error: fetchError } = await supabase
-          .from("inventory")
-          .select("quantity")
-          .eq("product_id", item.product_id)
-          .eq("location", 'utawala')
-          .single();
-
-        if (fetchError) {
-          console.error('Error fetching current inventory:', fetchError);
-          throw fetchError;
-        }
-
-        const { error: inventoryError } = await supabase
-          .from("inventory")
-          .update({
-            quantity: currentInventory.quantity - item.quantity
-          })
-          .eq("product_id", item.product_id)
-          .eq("location", 'utawala');
-
-        if (inventoryError) {
-          console.error('Error updating inventory:', inventoryError);
-          throw inventoryError;
-        }
-      }
+      return NextResponse.json(data);
     }
 
-    const { data: updatedSale, error } = await supabase
+    // Handle rejection case
+    const { data: updatedSale, error: updateError } = await supabase
       .from("sales")
       .update({ 
-        status,
-        approved_by: approved_by || null,
+        status: 'rejected',
+        approved_by,
+        updated_at: new Date().toISOString()
       })
       .eq("id", params.id)
       .select()
       .single();
 
-    if (error) {
-      console.error('Error updating sale status:', error);
-      throw error;
-    }
+    if (updateError) throw updateError;
+
     return NextResponse.json(updatedSale);
   } catch (error: any) {
-    console.error('Final error:', error);
-    return new NextResponse(
-      error.message || "An error occurred while processing the sale",
+    console.error('Error processing sale:', error);
+    return NextResponse.json(
+      { error: error.message || "Failed to process sale" },
       { status: 500 }
     );
   }
