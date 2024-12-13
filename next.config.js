@@ -1,6 +1,6 @@
 const withPWA = require('next-pwa')({
   dest: 'public',
-  register: false,
+  register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
@@ -33,6 +33,11 @@ const nextConfig = {
   compress: true,
   reactStrictMode: true,
   swcMinify: true,
+  experimental: {
+    serverActions: true,
+    serverComponentsExternalPackages: [],
+  },
+  output: 'standalone',
   headers: async () => {
     return [
       {
@@ -66,7 +71,7 @@ const nextConfig = {
           },
           {
             key: 'X-XSS-Protection',
-            value: '1; mode=block'
+            value: 'block'
           },
           {
             key: 'X-Frame-Options',
