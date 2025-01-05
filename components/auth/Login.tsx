@@ -64,9 +64,6 @@ export default function Login() {
         <div className="absolute inset-0 flex items-center justify-center p-12">
           <div className="text-white space-y-8">
             <h1 className="text-4xl font-bold">Water & Effluent Treatment Specialists</h1>
-            <p className="text-blue-100 text-lg max-w-lg">
-              Managing our inventory efficiently to provide the best water treatment solutions for our clients.
-            </p>
           </div>
         </div>
       </div>
