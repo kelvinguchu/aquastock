@@ -1,14 +1,25 @@
 import Login from "@/components/auth/Login";
-import { createServerClient } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export default async function LoginPage() {
-  const supabase = await createServerClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-  if (session) {
-    redirect("/dashboard");
+    if (user && !userError) {
+      redirect("/dashboard");
+    }
+
+    return (
+      <div suppressHydrationWarning>
+        <Login />
+      </div>
+    );
+  } catch (error) {
+    return <Login />;
   }
-
-  return <Login />;
 }
